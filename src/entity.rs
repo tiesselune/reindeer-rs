@@ -310,3 +310,9 @@ impl AsBytes for (u32, u32) {
         res.concat()
     }
 }
+
+impl AsBytes for Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.clone()
+    }
+}
