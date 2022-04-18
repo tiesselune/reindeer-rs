@@ -156,6 +156,11 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
+    fn remove_from_u8_array(key : &[u8], db : &Db) -> std::io::Result<()> {
+        Self::get_tree(db)?.remove(key)?;
+        Ok(())
+    }
+
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
         for entity in Self::get_with_prefix(prefix, db)? {
             Self::remove(&entity.get_key(), db)?;
