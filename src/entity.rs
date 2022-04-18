@@ -300,19 +300,13 @@ impl AsBytes for u32 {
 
 impl AsBytes for (u32, String) {
     fn as_bytes(&self) -> Vec<u8> {
-        let mut res = Vec::new();
-        res.push(self.0.to_be_bytes().to_vec());
-        res.push(self.1.as_bytes().to_vec());
-        res.concat()
+        vec![self.0.to_be_bytes().to_vec(),self.1.as_bytes().to_vec()].concat()
     }
 }
 
 impl AsBytes for (u32, u32) {
     fn as_bytes(&self) -> Vec<u8> {
-        let mut res = Vec::new();
-        res.push(self.0.to_be_bytes().to_vec());
-        res.push(self.1.to_be_bytes().to_vec());
-        res.concat()
+        vec![self.0.to_be_bytes().to_vec(),self.1.to_be_bytes().to_vec()].concat()
     }
 }
 

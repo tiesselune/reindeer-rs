@@ -50,7 +50,7 @@ impl<T: Entity> RelationSingle<T> {
 
 impl<T: Entity> RelationMany<T> {
     pub fn restore(&mut self, db: &Db) -> std::io::Result<()> {
-        if let Some(_) = self.values {
+        if self.values.is_some() {
             return Ok(());
         }
         let mut values = Vec::new();
