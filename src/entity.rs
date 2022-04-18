@@ -27,7 +27,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Self::get_from_u8_array(&key.as_bytes(), db)
     }
 
-    fn get_number(db : &Db) -> std::io::Result<usize> {
+    fn get_number(db: &Db) -> std::io::Result<usize> {
         Ok(Self::get_tree(db)?.len())
     }
 
@@ -156,7 +156,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn remove_from_u8_array(key : &[u8], db : &Db) -> std::io::Result<()> {
+    fn remove_from_u8_array(key: &[u8], db: &Db) -> std::io::Result<()> {
         Self::get_tree(db)?.remove(key)?;
         Ok(())
     }
