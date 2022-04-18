@@ -136,7 +136,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn update<F: Fn(&mut Self) -> ()>(key: &Self::Key, f: F, db: &Db) -> std::io::Result<()> {
+    fn update<F: Fn(&mut Self)>(key: &Self::Key, f: F, db: &Db) -> std::io::Result<()> {
         Self::get_tree(db)?
             .fetch_and_update(&key.as_bytes(), |e| {
                 e.map(|u8_arr| {
@@ -176,7 +176,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(res)
     }
 
-    fn filter_update<F: Fn(&Self) -> bool, M: Fn(&mut Self) -> ()>(
+    fn filter_update<F: Fn(&Self) -> bool, M: Fn(&mut Self)>(
         filter: F,
         modifier: M,
         db: &Db,
@@ -250,7 +250,7 @@ pub trait Separable<Host: Entity>: Entity + SetKey {
                 "No value was provided to separate from",
             ));
         }
-        let mut separate_data = std::mem::replace(opt_field, None).unwrap();
+        let mut separate_data = opt_field.take().unwrap();
         separate_data.set_key(key);
         separate_data.save(db)
     }
@@ -277,7 +277,7 @@ where
                 "No value was provided to separate from",
             ));
         }
-        let mut separate_data = std::mem::replace(opt_field, None).unwrap();
+        let mut separate_data = opt_field.take().unwrap();
         separate_data.save_next(db)
     }
 }
