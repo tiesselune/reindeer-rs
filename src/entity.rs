@@ -243,6 +243,15 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn has_related<E : Entity>(&self, db : &Db) -> bool {
         Relation::has_referers::<Self,E>(&self, db)
     }
+
+    fn remove_related<E : Entity>(&self,db : &Db) -> std::io::Result<()> {
+        let referers = Relation::referers::<Self,E>(self, db)?;
+        for referer in referers {
+            E::remove_from_u8_array(&referer, db)?;
+            Relation::remove_by_keys::<Self,E>(&self.get_key().as_bytes(), &referer, db)?;
+        }
+        Ok(())
+    }
 }
 
 pub trait SetKey: Entity {
