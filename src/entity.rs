@@ -3,6 +3,7 @@ use std::{fs::File, io::ErrorKind};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Db, IVec, Tree};
 use std::convert::TryInto;
+use crate::relation::Relation;
 
 pub trait Entity: Serialize + DeserializeOwned {
     type Key: AsBytes;
@@ -218,6 +219,29 @@ pub trait Entity: Serialize + DeserializeOwned {
             each.save(db)?;
         }
         Ok(())
+    }
+
+    fn create_relation<E : Entity>(&self, other : &E, db : &Db) -> std::io::Result<()>{
+        Relation::create(self, other, db)
+    }
+
+    fn remove_relation<E : Entity>(&self,other : &E, db : &Db) -> std::io::Result<()> {
+        Relation::remove(self, other, db)
+    }
+    fn remove_relation_with_key<E : Entity>(&self,other : &[u8], db : &Db) -> std::io::Result<()> {
+        Relation::remove_by_keys::<Self,E>(&self.get_key().as_bytes(), other, db)
+    }
+
+    fn get_related<E : Entity>(&self, db : &Db) -> std::io::Result<Vec<E>> {
+        Relation::get::<Self,E>(&self, db)
+    }
+
+    fn get_single_related<E : Entity>(&self, db : &Db) -> std::io::Result<E> {
+        Relation::get_one::<Self,E>(&self, db)
+    }
+
+    fn has_related<E : Entity>(&self, db : &Db) -> bool {
+        Relation::has_referers::<Self,E>(&self, db)
     }
 }
 

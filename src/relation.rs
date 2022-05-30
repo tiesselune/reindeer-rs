@@ -12,6 +12,18 @@ impl Relation {
         Ok(())
     }
 
+    pub fn remove<E1 : Entity, E2 : Entity>(e1 : &E1,e2 : &E2, db : &Db) -> std::io::Result<()> {
+        Relation::remove_link(e1, e2, db)?;
+        Relation::remove_link(e2, e1, db)?;
+        Ok(())
+    }
+
+    pub fn remove_by_keys<E1 : Entity, E2 : Entity>(e1 : &[u8],e2 : &[u8], db : &Db) -> std::io::Result<()> {
+        Relation::remove_link_with_keys::<E1,E2>(e1, e2, db)?;
+        Relation::remove_link_with_keys::<E1,E2>(e2, e1, db)?;
+        Ok(())
+    }
+
     fn tree_name<E1 : Entity, E2 : Entity>() -> String{
         format!("__rel_{}_{}",E1::tree_name(),E2::tree_name())
     }
@@ -53,6 +65,7 @@ impl Relation {
             Err(std::io::Error::new(std::io::ErrorKind::NotFound,"Relations for this entity are empty"))
         }
     }
+
     fn create_link<E1 : Entity, E2 : Entity>(e1 : &E1, e2 : &E2, db : &Db) -> std::io::Result<()>{
         let tree = db.open_tree(Relation::tree_name::<E1,E2>())?;
         if let Some(vec) = tree.get(e1.get_key().as_bytes())? {
@@ -61,6 +74,20 @@ impl Relation {
             tree.insert(e1.get_key().as_bytes(), bincode::serialize(&key_list).unwrap())?;
         }
         Ok(())
+    }
+    fn remove_link_with_keys<E1 : Entity, E2 : Entity>(e1 : &[u8],e2 : &[u8], db : &Db) -> std::io::Result<()> {
+        let tree = db.open_tree(Relation::tree_name::<E1,E2>())?;
+        if let Some(vec) = tree.get(e1)? {
+            let mut key_list : Vec<Vec<u8>> = bincode::deserialize(vec.as_ref()).unwrap();
+            if let Some(index) = key_list.iter().position(|value| value.to_ascii_lowercase() == e2.to_ascii_lowercase()) {
+                key_list.swap_remove(index);
+            }
+            tree.insert(e1, bincode::serialize(&key_list).unwrap())?;
+        }
+        Ok(())
+    }
+    fn remove_link<E1 : Entity, E2 : Entity>(e1 : &E1, e2 : &E2, db : &Db) -> std::io::Result<()>{
+        Relation::remove_link_with_keys::<E1,E2>(&e1.get_key().as_bytes(),&e2.get_key().as_bytes(), db)
     }
 }
 
