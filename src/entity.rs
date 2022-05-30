@@ -253,6 +253,21 @@ pub trait Entity: Serialize + DeserializeOwned {
         }
         Ok(())
     }
+
+    fn save_sibling<E : Entity<Key = Self::Key>>(&self, sibling : &mut E, db : &Db) -> std::io::Result<()> {
+        sibling.set_key(&self.get_key());
+        sibling.save(db)
+    }
+
+    fn get_sibling<E : Entity<Key = Self::Key>>(&self, db : &Db) -> std::io::Result<E> {
+        if let Some(e) = E::get(&self.get_key(),db)? {
+            Ok(e)
+        }
+        else {
+            Err(std::io::Error::new(std::io::ErrorKind::NotFound,"Sibling was not found."))
+        }
+    }
+
 }
 
 pub trait AutoIncrementEntity: Entity<Key = u32> {

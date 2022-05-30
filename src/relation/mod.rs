@@ -90,6 +90,7 @@ impl Relation {
         }
         Ok(())
     }
+
     fn remove_link_with_keys<E1: Entity, E2: Entity>(
         e1: &[u8],
         e2: &[u8],
@@ -108,6 +109,7 @@ impl Relation {
         }
         Ok(())
     }
+    
     fn remove_link<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> std::io::Result<()> {
         Relation::remove_link_with_keys::<E1, E2>(
             &e1.get_key().as_bytes(),
