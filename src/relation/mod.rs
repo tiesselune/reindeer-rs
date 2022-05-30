@@ -2,6 +2,12 @@ use sled::Db;
 
 use crate::entity::{AsBytes, Entity};
 
+mod sibling_relation;
+mod parent_child_relation;
+
+pub use sibling_relation::SiblingRelation;
+pub use parent_child_relation::ParentChildRelation;
+
 pub struct Relation;
 
 impl Relation {
