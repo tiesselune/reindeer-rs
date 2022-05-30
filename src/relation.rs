@@ -71,6 +71,7 @@ impl<T: Entity> RelationMany<T> {
         for v in &self.keys {
             T::remove_from_u8_array(v, db)?;
         }
+        self.values = None;
         Ok(())
     }
 }
