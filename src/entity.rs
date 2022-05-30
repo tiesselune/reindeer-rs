@@ -128,6 +128,16 @@ pub trait Entity: Serialize + DeserializeOwned {
             .collect()
     }
 
+    fn get_each_u8(keys : &Vec<Vec<u8>>, db: &Db) -> Vec<Self> {
+        keys.iter()
+            .map(|key| Self::get_from_u8_array(&key, db))
+            .filter_map(|res| match res {
+                Ok(opt) => opt,
+                Err(_) => None,
+            })
+            .collect()
+    }
+
     fn save(&self, db: &Db) -> std::io::Result<()> {
         Self::get_tree(db)?.insert(
             &self.get_key().as_bytes(),
