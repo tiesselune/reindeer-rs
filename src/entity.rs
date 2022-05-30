@@ -10,6 +10,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     fn tree_name() -> &'static str;
     fn get_key(&self) -> Self::Key;
+    fn set_key(&mut self,key : &Self::Key);
 
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
         db.open_tree(Self::tree_name())
@@ -254,18 +255,14 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 }
 
-pub trait SetKey: Entity {
-    fn set_key(&mut self, key: &Self::Key);
-}
-
-pub trait IncrementableEntity: Entity<Key = u32> {
+pub trait AutoIncrementEntity: Entity<Key = u32> {
     fn get_next_key(db: &Db) -> std::io::Result<u32>;
     fn save_next(&mut self, db: &Db) -> std::io::Result<u32>;
 }
 
-impl<T> IncrementableEntity for T
+impl<T> AutoIncrementEntity for T
 where
-    T: Entity<Key = u32> + SetKey,
+    T: Entity<Key = u32>,
 {
     fn get_next_key(db: &Db) -> std::io::Result<u32> {
         match Self::get_tree(db)?.last()? {
@@ -279,49 +276,6 @@ where
         self.set_key(&next_key);
         self.save(db)?;
         Ok(next_key)
-    }
-}
-
-pub trait Separable<Host: Entity>: Entity + SetKey {
-    fn get_optional_field(host: &mut Host) -> &mut Option<Self>;
-
-    fn save_separate(key: &Self::Key, host: &mut Host, db: &Db) -> std::io::Result<()> {
-        let opt_field = Self::get_optional_field(host);
-        if opt_field.is_none() {
-            return Err(std::io::Error::new(
-                ErrorKind::NotFound,
-                "No value was provided to separate from",
-            ));
-        }
-        let mut separate_data = opt_field.take().unwrap();
-        separate_data.set_key(key);
-        separate_data.save(db)
-    }
-
-    fn restore(key: &Self::Key, host: &mut Host, db: &Db) -> std::io::Result<()> {
-        *Self::get_optional_field(host) = Self::get(key, db)?;
-        Ok(())
-    }
-}
-
-pub trait SeparableIncrementable<Host: Entity>: Entity {
-    fn save_next_separate(host: &mut Host, db: &Db) -> std::io::Result<Self::Key>;
-}
-
-impl<T, Host: Entity> SeparableIncrementable<Host> for T
-where
-    T: Entity + IncrementableEntity + Separable<Host>,
-{
-    fn save_next_separate(host: &mut Host, db: &Db) -> std::io::Result<Self::Key> {
-        let opt_field = Self::get_optional_field(host);
-        if opt_field.is_none() {
-            return Err(std::io::Error::new(
-                ErrorKind::NotFound,
-                "No value was provided to separate from",
-            ));
-        }
-        let mut separate_data = opt_field.take().unwrap();
-        separate_data.save_next(db)
     }
 }
 
