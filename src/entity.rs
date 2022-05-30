@@ -1,16 +1,16 @@
 use std::{fs::File, io::ErrorKind};
 
+use crate::relation::Relation;
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Db, IVec, Tree};
 use std::convert::TryInto;
-use crate::relation::Relation;
 
 pub trait Entity: Serialize + DeserializeOwned {
     type Key: AsBytes;
 
     fn tree_name() -> &'static str;
     fn get_key(&self) -> Self::Key;
-    fn set_key(&mut self,key : &Self::Key);
+    fn set_key(&mut self, key: &Self::Key);
 
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
         db.open_tree(Self::tree_name())
@@ -130,7 +130,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             .collect()
     }
 
-    fn get_each_u8(keys : &Vec<Vec<u8>>, db: &Db) -> Vec<Self> {
+    fn get_each_u8(keys: &Vec<Vec<u8>>, db: &Db) -> Vec<Self> {
         keys.iter()
             .map(|key| Self::get_from_u8_array(&key, db))
             .filter_map(|res| match res {
@@ -222,34 +222,34 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn create_relation<E : Entity>(&self, other : &E, db : &Db) -> std::io::Result<()>{
+    fn create_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
         Relation::create(self, other, db)
     }
 
-    fn remove_relation<E : Entity>(&self,other : &E, db : &Db) -> std::io::Result<()> {
+    fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
         Relation::remove(self, other, db)
     }
-    fn remove_relation_with_key<E : Entity>(&self,other : &[u8], db : &Db) -> std::io::Result<()> {
-        Relation::remove_by_keys::<Self,E>(&self.get_key().as_bytes(), other, db)
+    fn remove_relation_with_key<E: Entity>(&self, other: &[u8], db: &Db) -> std::io::Result<()> {
+        Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), other, db)
     }
 
-    fn get_related<E : Entity>(&self, db : &Db) -> std::io::Result<Vec<E>> {
-        Relation::get::<Self,E>(&self, db)
+    fn get_related<E: Entity>(&self, db: &Db) -> std::io::Result<Vec<E>> {
+        Relation::get::<Self, E>(&self, db)
     }
 
-    fn get_single_related<E : Entity>(&self, db : &Db) -> std::io::Result<E> {
-        Relation::get_one::<Self,E>(&self, db)
+    fn get_single_related<E: Entity>(&self, db: &Db) -> std::io::Result<E> {
+        Relation::get_one::<Self, E>(&self, db)
     }
 
-    fn has_related<E : Entity>(&self, db : &Db) -> bool {
-        Relation::has_referers::<Self,E>(&self, db)
+    fn has_related<E: Entity>(&self, db: &Db) -> bool {
+        Relation::has_referers::<Self, E>(&self, db)
     }
 
-    fn remove_related<E : Entity>(&self,db : &Db) -> std::io::Result<()> {
-        let referers = Relation::referers::<Self,E>(self, db)?;
+    fn remove_related<E: Entity>(&self, db: &Db) -> std::io::Result<()> {
+        let referers = Relation::referers::<Self, E>(self, db)?;
         for referer in referers {
             E::remove_from_u8_array(&referer, db)?;
-            Relation::remove_by_keys::<Self,E>(&self.get_key().as_bytes(), &referer, db)?;
+            Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), &referer, db)?;
         }
         Ok(())
     }
@@ -297,13 +297,13 @@ impl AsBytes for u32 {
 
 impl AsBytes for (u32, String) {
     fn as_bytes(&self) -> Vec<u8> {
-        vec![self.0.to_be_bytes().to_vec(),self.1.as_bytes().to_vec()].concat()
+        vec![self.0.to_be_bytes().to_vec(), self.1.as_bytes().to_vec()].concat()
     }
 }
 
 impl AsBytes for (u32, u32) {
     fn as_bytes(&self) -> Vec<u8> {
-        vec![self.0.to_be_bytes().to_vec(),self.1.to_be_bytes().to_vec()].concat()
+        vec![self.0.to_be_bytes().to_vec(), self.1.to_be_bytes().to_vec()].concat()
     }
 }
 
