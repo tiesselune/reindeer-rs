@@ -1,14 +1,11 @@
+mod descriptor;
+
 use sled::Db;
 
 use crate::entity::{AsBytes, Entity};
 
-mod parent_child_relation;
-mod sibling_relation;
-
-pub use parent_child_relation::ParentChildRelation;
-pub use sibling_relation::SiblingRelation;
-
 pub struct Relation;
+
 
 impl Relation {
     pub fn create<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> std::io::Result<()> {
