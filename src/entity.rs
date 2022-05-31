@@ -241,17 +241,8 @@ pub trait Entity: Serialize + DeserializeOwned {
         Relation::get_one::<Self, E>(&self, db)
     }
 
-    fn has_related<E: Entity>(&self, db: &Db) -> bool {
-        Relation::has_referers::<Self, E>(&self, db)
-    }
-
-    fn remove_related<E: Entity>(&self, db: &Db) -> std::io::Result<()> {
-        let referers = Relation::referers::<Self, E>(self, db)?;
-        for referer in referers {
-            E::remove_from_u8_array(&referer, db)?;
-            Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), &referer, db)?;
-        }
-        Ok(())
+    fn has_related<E: Entity>(&self, db: &Db) -> std::io::Result<bool> {
+        Relation::has_referers(self, db)
     }
 
     fn save_sibling<E : Entity<Key = Self::Key>>(&self, sibling : &mut E, db : &Db) -> std::io::Result<()> {
@@ -268,7 +259,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         }
     }
 
-    fn add_child<E : Entity<Key = (Self::Key,u32)>>(&self,child : &mut E,db : &Db) -> std::io::Result<E::Key> {
+    fn save_child<E : Entity<Key = (Self::Key,u32)>>(&self,child : &mut E,db : &Db) -> std::io::Result<E::Key> {
         let increment = match Self::get_tree(db)?.last()? {
             Some((key, _)) => u32::from_be_bytes(key.as_ref().try_into().unwrap()) + 1,
             None => Default::default(),
