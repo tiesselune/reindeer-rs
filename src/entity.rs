@@ -268,6 +268,21 @@ pub trait Entity: Serialize + DeserializeOwned {
         }
     }
 
+    fn add_child<E : Entity<Key = (Self::Key,u32)>>(&self,child : &mut E,db : &Db) -> std::io::Result<E::Key> {
+        let increment = match Self::get_tree(db)?.last()? {
+            Some((key, _)) => u32::from_be_bytes(key.as_ref().try_into().unwrap()) + 1,
+            None => Default::default(),
+        };
+        let key = (self.get_key(),increment);
+        child.set_key(&key);
+        child.save(db)?;
+        Ok(key)
+    }
+
+    fn get_children<E : Entity<Key = (Self::Key,u32)>>(&self,db : &Db) -> std::io::Result<Vec<E>>{
+        E::get_with_prefix(self.get_key(), db)
+    }
+
 }
 
 pub trait AutoIncrementEntity: Entity<Key = u32> {
