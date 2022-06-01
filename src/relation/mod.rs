@@ -22,6 +22,18 @@ impl Relation {
         Ok(())
     }
 
+    pub fn remove_entity_entry<E1 : Entity>(key : &[u8],db : &Db) -> std::io::Result<()> {
+        let descriptor = Self::get_descriptor_with_key::<E1>(key,db)?;
+        for (tree_name,referers) in descriptor.related_entities {
+            for referer in referers {
+                Self::remove_link_with_keys_and_tree_names(&tree_name, &referer, E1::tree_name(), key, db)?;
+            }
+        }
+        let tree = db.open_tree(Relation::tree_name(E1::tree_name()))?;
+        tree.remove(key)?;
+        Ok(())
+    }
+
     pub fn remove_by_keys<E1: Entity, E2: Entity>(
         e1: &[u8],
         e2: &[u8],

@@ -190,7 +190,7 @@ pub trait Entity: Serialize + DeserializeOwned {
                 }
             }
         }
-
+        Relation::remove_entity_entry::<Self>(key, db)?;
         Ok(())
     }
 
