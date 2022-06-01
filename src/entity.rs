@@ -366,9 +366,33 @@ impl AsBytes for u32 {
     }
 }
 
+impl AsBytes for u64 {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.to_be_bytes().to_vec()
+    }
+}
+
+impl AsBytes for i32 {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.to_be_bytes().to_vec()
+    }
+}
+
+impl AsBytes for i64 {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.to_be_bytes().to_vec()
+    }
+}
+
 impl AsBytes for Vec<u8> {
     fn as_bytes(&self) -> Vec<u8> {
         self.clone()
+    }
+}
+
+impl AsBytes for &[u8] {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.to_vec()
     }
 }
 
