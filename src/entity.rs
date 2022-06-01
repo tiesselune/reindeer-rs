@@ -183,10 +183,10 @@ pub trait Entity: Serialize + DeserializeOwned {
                             "Sibling elements exist",
                         ));
                     }
-                    DeletionBehaviour::BreakLink => {},
+                    DeletionBehaviour::BreakLink => {}
                     DeletionBehaviour::Cascade => {
                         tree.remove(key)?;
-                    },
+                    }
                 }
             }
         }
@@ -195,11 +195,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn remove(key: &Self::Key, db: &Db) -> std::io::Result<()> {
-        Self::remove_from_u8_array(&key.as_bytes(),db)
+        Self::remove_from_u8_array(&key.as_bytes(), db)
     }
 
     fn remove_from_u8_array(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Self::pre_remove(key,db)?;
+        Self::pre_remove(key, db)?;
         Self::get_tree(db)?.remove(key)?;
         Ok(())
     }
@@ -269,6 +269,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
         Relation::remove(self, other, db)
     }
+
     fn remove_relation_with_key<E: Entity>(&self, other: &[u8], db: &Db) -> std::io::Result<()> {
         Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), other, db)
     }
