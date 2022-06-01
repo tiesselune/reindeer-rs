@@ -74,7 +74,7 @@ impl Relation {
 
     pub fn can_be_deleted<E1: Entity>(e1: &E1, db: &Db) -> std::io::Result<bool> {
         let descriptor = Self::get_descriptor(e1, db)?;
-        if descriptor.related_entities.len() > 0 {
+        if !descriptor.related_entities.is_empty() {
             return Ok(false);
         }
         for (tree, behaviour) in E1::get_sibling_trees() {
@@ -97,7 +97,7 @@ impl Relation {
     pub fn get<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<Vec<E2>> {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::tree_name()) {
-            Ok(E2::get_each_u8(&related_keys, db))
+            Ok(E2::get_each_u8(related_keys, db))
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -109,7 +109,7 @@ impl Relation {
     pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<E2> {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::tree_name()) {
-            if related_keys.len() > 0 {
+            if !related_keys.is_empty() {
                 if let Some(e) = E2::get_from_u8_array(&related_keys[0], db)? {
                     return Ok(e);
                 }
@@ -135,7 +135,7 @@ impl Relation {
             Some(relation_descriptor) => {
                 Ok(bincode::deserialize::<RelationDescriptor>(&relation_descriptor).unwrap())
             }
-            None => Ok(RelationDescriptor::new()),
+            None => Ok(RelationDescriptor::default()),
         }
     }
 
@@ -143,7 +143,7 @@ impl Relation {
         e: &[u8],
         db: &Db,
     ) -> std::io::Result<RelationDescriptor> {
-        Self::get_descriptor_with_key_and_tree_name(&E::tree_name(), e, db)
+        Self::get_descriptor_with_key_and_tree_name(E::tree_name(), e, db)
     }
 
     fn get_descriptor<E: Entity>(e: &E, db: &Db) -> std::io::Result<RelationDescriptor> {
@@ -155,7 +155,7 @@ impl Relation {
         r_d: &RelationDescriptor,
         db: &Db,
     ) -> std::io::Result<()> {
-        let tree = db.open_tree(Relation::tree_name(&E::tree_name()))?;
+        let tree = db.open_tree(Relation::tree_name(E::tree_name()))?;
         tree.insert(e, bincode::serialize(r_d).unwrap())?;
         Ok(())
     }

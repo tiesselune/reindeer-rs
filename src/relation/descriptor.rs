@@ -12,12 +12,6 @@ pub struct RelationDescriptor {
 }
 
 impl RelationDescriptor {
-    pub fn new() -> RelationDescriptor {
-        RelationDescriptor {
-            related_entities: HashMap::default(),
-        }
-    }
-
     pub fn add_related<E: Entity>(&mut self, e: &E) {
         let key = e.get_key().as_bytes();
         if let Some(v) = self.related_entities.get_mut(E::tree_name()) {
@@ -29,7 +23,7 @@ impl RelationDescriptor {
     }
 
     pub fn remove_related_by_key<E: Entity>(&mut self, e: &[u8]) {
-        self.remove_related_by_key_and_tree_name(&E::tree_name(), e)
+        self.remove_related_by_key_and_tree_name(E::tree_name(), e)
     }
 
     pub fn remove_related_by_key_and_tree_name(&mut self, tree: &str, e: &[u8]) {
@@ -45,5 +39,13 @@ impl RelationDescriptor {
 
     pub fn empty(&mut self) {
         self.related_entities = HashMap::default();
+    }
+}
+
+impl Default for RelationDescriptor {
+    fn default() -> RelationDescriptor {
+        RelationDescriptor {
+            related_entities: HashMap::default(),
+        }
     }
 }

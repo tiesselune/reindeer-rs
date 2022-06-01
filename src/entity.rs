@@ -136,9 +136,9 @@ pub trait Entity: Serialize + DeserializeOwned {
             .collect()
     }
 
-    fn get_each_u8(keys: &Vec<Vec<u8>>, db: &Db) -> Vec<Self> {
+    fn get_each_u8(keys: &[Vec<u8>], db: &Db) -> Vec<Self> {
         keys.iter()
-            .map(|key| Self::get_from_u8_array(&key, db))
+            .map(|key| Self::get_from_u8_array(key, db))
             .filter_map(|res| match res {
                 Ok(opt) => opt,
                 Err(_) => None,
@@ -171,7 +171,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
         for tree_name in &Self::get_child_trees() {
-            Self::remove_prefixed_in_tree(&tree_name, key, db)?;
+            Self::remove_prefixed_in_tree(tree_name, key, db)?;
         }
         for (tree_name, behaviour) in &Self::get_sibling_trees() {
             let tree = db.open_tree(tree_name)?;
@@ -205,7 +205,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
-        Self::remove_prefixed_in_tree(&Self::tree_name(), &prefix.as_bytes(), db)
+        Self::remove_prefixed_in_tree(Self::tree_name(), &prefix.as_bytes(), db)
     }
 
     fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> std::io::Result<()> {
@@ -275,11 +275,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn get_related<E: Entity>(&self, db: &Db) -> std::io::Result<Vec<E>> {
-        Relation::get::<Self, E>(&self, db)
+        Relation::get::<Self, E>(self, db)
     }
 
     fn get_single_related<E: Entity>(&self, db: &Db) -> std::io::Result<E> {
-        Relation::get_one::<Self, E>(&self, db)
+        Relation::get_one::<Self, E>(self, db)
     }
 
     fn has_related<E: Entity>(&self, db: &Db) -> std::io::Result<bool> {
