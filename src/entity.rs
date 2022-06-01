@@ -1,8 +1,8 @@
 use std::{fs::File, io::ErrorKind};
 
-use crate::relation::Relation;
+use crate::relation::{DeletionBehaviour, Relation};
 use serde::{de::DeserializeOwned, Serialize};
-use sled::{Db, IVec, Tree};
+use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
 
 pub trait Entity: Serialize + DeserializeOwned {
@@ -11,6 +11,12 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn tree_name() -> &'static str;
     fn get_key(&self) -> Self::Key;
     fn set_key(&mut self, key: &Self::Key);
+    fn get_sibling_trees() -> Vec<(String, DeletionBehaviour)> {
+        Vec::new()
+    }
+    fn get_child_trees() -> Vec<String> {
+        Vec::new()
+    }
 
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
         db.open_tree(Self::tree_name())
@@ -163,20 +169,54 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn remove(key: &Self::Key, db: &Db) -> std::io::Result<()> {
-        Self::get_tree(db)?.remove(&key.as_bytes())?;
+    fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
+        for tree_name in &Self::get_child_trees() {
+            Self::remove_prefixed_in_tree(&tree_name, key, db)?;
+        }
+        for (tree_name, behaviour) in &Self::get_sibling_trees() {
+            let tree = db.open_tree(tree_name)?;
+            if tree.contains_key(key)? {
+                match behaviour {
+                    DeletionBehaviour::Error => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            "Sibling elements exist",
+                        ));
+                    }
+                    DeletionBehaviour::BreakLink => {},
+                    DeletionBehaviour::Cascade => {
+                        tree.remove(key)?;
+                    },
+                }
+            }
+        }
+
         Ok(())
     }
 
+    fn remove(key: &Self::Key, db: &Db) -> std::io::Result<()> {
+        Self::remove_from_u8_array(&key.as_bytes(),db)
+    }
+
     fn remove_from_u8_array(key: &[u8], db: &Db) -> std::io::Result<()> {
+        Self::pre_remove(key,db)?;
         Self::get_tree(db)?.remove(key)?;
         Ok(())
     }
 
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
-        for entity in Self::get_with_prefix(prefix, db)? {
-            Self::remove(&entity.get_key(), db)?;
-        }
+        Self::remove_prefixed_in_tree(&Self::tree_name(), &prefix.as_bytes(), db)
+    }
+
+    fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> std::io::Result<()> {
+        let tree = db.open_tree(tree_name)?;
+        let mut batch = Batch::default();
+        tree.scan_prefix(prefix).for_each(|elem| {
+            if let Ok((key, _)) = elem {
+                batch.remove(key)
+            }
+        });
+        tree.apply_batch(batch)?;
         Ok(())
     }
 
@@ -242,38 +282,47 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn has_related<E: Entity>(&self, db: &Db) -> std::io::Result<bool> {
-        Relation::has_referers(self, db)
+        Relation::can_be_deleted(self, db)
     }
 
-    fn save_sibling<E : Entity<Key = Self::Key>>(&self, sibling : &mut E, db : &Db) -> std::io::Result<()> {
+    fn save_sibling<E: Entity<Key = Self::Key>>(
+        &self,
+        sibling: &mut E,
+        db: &Db,
+    ) -> std::io::Result<()> {
         sibling.set_key(&self.get_key());
         sibling.save(db)
     }
 
-    fn get_sibling<E : Entity<Key = Self::Key>>(&self, db : &Db) -> std::io::Result<E> {
-        if let Some(e) = E::get(&self.get_key(),db)? {
+    fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> std::io::Result<E> {
+        if let Some(e) = E::get(&self.get_key(), db)? {
             Ok(e)
-        }
-        else {
-            Err(std::io::Error::new(std::io::ErrorKind::NotFound,"Sibling was not found."))
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Sibling was not found.",
+            ))
         }
     }
 
-    fn save_child<E : Entity<Key = (Self::Key,u32)>>(&self,child : &mut E,db : &Db) -> std::io::Result<E::Key> {
+    fn save_child<E: Entity<Key = (Self::Key, u32)>>(
+        &self,
+        child: &mut E,
+        db: &Db,
+    ) -> std::io::Result<E::Key> {
         let increment = match Self::get_tree(db)?.last()? {
             Some((key, _)) => u32::from_be_bytes(key.as_ref().try_into().unwrap()) + 1,
             None => Default::default(),
         };
-        let key = (self.get_key(),increment);
+        let key = (self.get_key(), increment);
         child.set_key(&key);
         child.save(db)?;
         Ok(key)
     }
 
-    fn get_children<E : Entity<Key = (Self::Key,u32)>>(&self,db : &Db) -> std::io::Result<Vec<E>>{
+    fn get_children<E: Entity<Key = (Self::Key, u32)>>(&self, db: &Db) -> std::io::Result<Vec<E>> {
         E::get_with_prefix(self.get_key(), db)
     }
-
 }
 
 pub trait AutoIncrementEntity: Entity<Key = u32> {
@@ -322,7 +371,11 @@ impl AsBytes for Vec<u8> {
     }
 }
 
-impl<K1,K2> AsBytes for (K1, K2) where K1 : AsBytes, K2 : AsBytes {
+impl<K1, K2> AsBytes for (K1, K2)
+where
+    K1: AsBytes,
+    K2: AsBytes,
+{
     fn as_bytes(&self) -> Vec<u8> {
         vec![self.0.as_bytes(), self.1.as_bytes()].concat()
     }
