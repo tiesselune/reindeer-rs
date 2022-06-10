@@ -201,7 +201,7 @@ impl Entity for Child{
 }
 ```
 
-### Adding a child entity
+#### Adding a child entity
 
 ```rs
 let parent = Parent {
@@ -217,17 +217,17 @@ parent.save_child(child,&db)?;
 
 :bulb: this will update `child`'s key to `parent`'s key and an auto-incremented index using the `set_key` method.
 
-### Getting Children
+#### Getting Children
 
 ```rs
 let children = parent.get_children::<Child>(&db)?;
 ```
 
-## Free relations
+### Free relations
 
 WIP
 
-## Auto-incrementing entities
+### Auto-incrementing entities
 
 WIP
 
