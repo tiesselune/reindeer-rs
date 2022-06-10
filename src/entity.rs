@@ -11,10 +11,10 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn tree_name() -> &'static str;
     fn get_key(&self) -> Self::Key;
     fn set_key(&mut self, key: &Self::Key);
-    fn get_sibling_trees() -> Vec<(String, DeletionBehaviour)> {
+    fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
-    fn get_child_trees() -> Vec<String> {
+    fn get_child_trees() -> Vec<&'static str> {
         Vec::new()
     }
 
@@ -295,15 +295,8 @@ pub trait Entity: Serialize + DeserializeOwned {
         sibling.save(db)
     }
 
-    fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> std::io::Result<E> {
-        if let Some(e) = E::get(&self.get_key(), db)? {
-            Ok(e)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Sibling was not found.",
-            ))
-        }
+    fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> std::io::Result<Option<E>> {
+         E::get(&self.get_key(), db)
     }
 
     fn save_child<E: Entity<Key = (Self::Key, u32)>>(
