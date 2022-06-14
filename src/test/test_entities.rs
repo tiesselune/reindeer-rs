@@ -52,7 +52,7 @@ impl Entity for Entity1 {
         self.id = *key;
     }
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
-        vec![("entity_2",DeletionBehaviour::Cascade)]
+        vec![("entity_3",DeletionBehaviour::Cascade)]
     }
 }
 
@@ -74,9 +74,6 @@ impl Entity for Entity2 {
     fn get_child_trees() -> Vec<(&'static str, crate::DeletionBehaviour)> {
         vec![("child_entity_1",DeletionBehaviour::Cascade)]
     }
-    fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
-        vec![("entity_1",DeletionBehaviour::Error)]
-    }
 }
 
 impl Entity for Entity3 {
@@ -92,6 +89,12 @@ impl Entity for Entity3 {
 
     fn set_key(&mut self, key: &Self::Key) {
         self.id = *key;
+    }
+    fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
+        vec![("entity_3",DeletionBehaviour::Error)]
+    }
+    fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
+        vec![("child_entity_2",DeletionBehaviour::Error)]
     }
 }
 
