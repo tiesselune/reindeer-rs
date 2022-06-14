@@ -1,6 +1,6 @@
 use std::{fs::File, io::ErrorKind};
 
-use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation};
+use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation, RelationDescriptor};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
@@ -186,36 +186,19 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Self::can_be_removed(key, db)?;
-        for (tree_name, d) in &Self::get_child_trees() {
-            if *d == DeletionBehaviour::Cascade {
-                Self::remove_prefixed_in_tree(tree_name, key, db)?;
-            }
+        let mut to_be_removed = RelationDescriptor::default();
+        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut to_be_removed, db)?;
+        for (tree,keys) in &to_be_removed.related_entities {
+            let tree = db.open_tree(tree)?;
+            let mut batch = Batch::default();
+            keys.iter().for_each(|(k, _)| batch.remove(k.as_slice()));
+            tree.apply_batch(batch)?;
         }
-        for (tree_name, behaviour) in &Self::get_sibling_trees() {
-            let tree = db.open_tree(tree_name)?;
-            if tree.contains_key(key)? {
-                match behaviour {
-                    DeletionBehaviour::Error => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::PermissionDenied,
-                            "Sibling elements exist",
-                        ));
-                    }
-                    DeletionBehaviour::BreakLink => {}
-                    DeletionBehaviour::Cascade => {
-                        tree.remove(key)?;
-                    }
-                }
-            }
-        }
-        Relation::delete_cascading_related::<Self>(key, db)?;
-        Relation::remove_entity_entry::<Self>(key, db)?;
         Ok(())
     }
 
     fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), db)?;
+        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut RelationDescriptor::default(), db)?;
         Ok(())
     }
 
