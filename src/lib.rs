@@ -8,7 +8,7 @@ pub use sled::open;
 pub use sled::Db;
 
 #[cfg(test)]
-mod test_entities;
+mod test;
 
 #[cfg(test)]
 mod tests {
