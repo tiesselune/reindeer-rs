@@ -260,9 +260,27 @@ let related_entity = e1.get_single_related::<Entity2>(db)?;
 
 #### Breaking a relation link
 
-WIP
+If needed, you can remove an existing link between entities:
+
+```rs
+e1.remove_relation(other,db)?;
+```
+or
+```rs
+e1.remove_relation_with_key::<OtherEntity>(otherKey,db)?;
+```
 
 ### Auto-incrementing entities
 
-WIP
+If your entity `Key` type is `u32`, you can auto-increment new entities using
 
+```rs
+let mut new_entity = Entity {
+    id : 0 // if you setup id with any key, saving will update it
+    /* ... */
+};
+new_entity.save_next(db)?;
+// new_entity's key is now the auto-incremente value
+```
+
+You entitie's key will be automatically updated with `set_key` to match the last found entry's ID, incremented by 1.
