@@ -104,10 +104,8 @@ MyStruct::remove(0,&db)?;
 `sled_entity` has three types of relations : 
 
  - `sibling` : An entity that has the same key in another tree (one to one relation)
- - `parent-child` : An entity which key is composed of its parent's key and a `u32` (as a two-element tuple) (one to many relation)
-    - Child entities cannot live without a parent entity
-    - Deleting the parent entity will delete child entities automatically
- - `free-relation` you freely connect two instances of two separate Entities together. The relationship must be broken to be able to remove any of the two. This can be used to achieve many to many relationships, but is less efficient than sibling and parent-child relationships in regard to querying the database.
+ - `parent-child` : An entity which key is composed of its parent's key and a `u32` (as a two-element tuple) for quick searching one to many relations
+ - `free-relation` you freely connect two instances of two separate Entities together. This can be used to achieve many to many relationships, but is less efficient than sibling and parent-child relationships in regard to querying the database.
 
 ### Sibling relationships
 
@@ -140,7 +138,7 @@ impl Entity for MyStruct2{
 :bulb: DeletionBehaviour determines what happens to the sibbling when the current entity is removed :
 
  - `DeletionBehaviour::Cascade` also deletes sibling entity
- - `DeletionBehaviour::Error` causes an Error if a sibling still exists
+ - `DeletionBehaviour::Error` causes an Error if a sibling still exists and does not delete the source element
  - `DeletionBehaviour::BreakLink` just removes the entity without removing its sibling.
 
 In the above example, deleting a `MyStruct1` instance also deletes its sibling `MyStruct2` instance, but deleting the `MyStruct2` instance leaves its sibling `MyStruct1` instance intact.
@@ -178,7 +176,6 @@ For a parent-child relationship between entities to exist, the child entity must
 
 Children entities will be auto-incremeted and easily retreived through their parent key.
 
-Children entities will be removed if parent entity is removed.
 
 ```rs
 impl Entity for Parent{
@@ -188,7 +185,7 @@ impl Entity for Parent{
         "parent"
     }
     fn get_child_trees() -> Vec<(&'static str)> {
-        return vec!["child"]
+        return vec![("child", DeletionBehaviour::Cascade)]
     }
 }
 
@@ -200,6 +197,9 @@ impl Entity for Child{
     }
 }
 ```
+
+In the above example, deleting the parent entity will remove all child entities automatically (thanks to the `Cascade` deletion behaviour).
+**For database integrity, it is strongly advised not to use `DeletionBehaviour::BreakLink` on parent/child relations,** and instead use either `Error` of `Cascade`
 
 #### Adding a child entity
 
@@ -224,6 +224,41 @@ let children = parent.get_children::<Child>(&db)?;
 ```
 
 ### Free relations
+
+Free relations follow the same pattern as other relation types, except they are freely created between any entities. This can be used to achieve many to many relationships.
+
+:bulb: Creating a free relation will automatically create its opposite relation, making it two-way.
+
+#### Linking two entities 
+
+```rs
+let e1 = Entity1 {
+    /* ... */
+};
+
+let mut e2 = Entity2 {
+    /* ... */
+}
+
+e1.create_relation(e2,DeletionBehaviour::Cascade, DeletionBehaviour::BreakLink,&db)?;
+```
+
+In the above example, deleting `e1` will automatically delete `e2`, but deleting `e2` will leave `e1` untouched.
+
+`DeletionBehaviour::Error` is also an option.
+
+#### Getting related entites from a given tree
+
+```rs
+let related_entities = e1.get_related::<Entity2>(db)?;
+```
+To get only the first related entity from the other tree, use 
+
+```rs
+let related_entity = e1.get_single_related::<Entity2>(db)?;
+```
+
+#### Breaking a relation link
 
 WIP
 
