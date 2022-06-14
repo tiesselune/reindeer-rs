@@ -8,9 +8,11 @@ use crate::Entity;
 
 use super::DeletionBehaviour;
 
-#[derive(Serialize, Deserialize)]
+type RelationMap = HashMap<String, Vec<(Vec<u8>,DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
+
+#[derive(Serialize, Deserialize,Default)]
 pub struct RelationDescriptor {
-    pub related_entities: HashMap<String, Vec<(Vec<u8>,DeletionBehaviour)>, BuildHasherDefault<FxHasher>>,
+    pub related_entities: RelationMap,
 }
 
 impl RelationDescriptor {
@@ -41,13 +43,5 @@ impl RelationDescriptor {
 
     pub fn empty(&mut self) {
         self.related_entities = HashMap::default();
-    }
-}
-
-impl Default for RelationDescriptor {
-    fn default() -> RelationDescriptor {
-        RelationDescriptor {
-            related_entities: HashMap::default(),
-        }
     }
 }

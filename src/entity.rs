@@ -222,7 +222,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         let mut batch = Batch::default();
         tree.scan_prefix(prefix).for_each(|elem| {
             if let Ok((key, _)) = elem {
-                if let Ok(_) = Self::pre_remove(&key, db) {
+                if Self::pre_remove(&key, db).is_ok() {
                     batch.remove(key)
                 }
             }
@@ -234,7 +234,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn filter_remove<F: Fn(&Self) -> bool>(f: F, db: &Db) -> std::io::Result<Vec<Self>> {
         let res = Self::get_with_filter(f, db)?;
         for entity in &res {
-            if let Ok(_) = Self::pre_remove(&entity.get_key().as_bytes(), db) {
+            if Self::pre_remove(&entity.get_key().as_bytes(), db).is_ok() {
                 Self::remove(&entity.get_key(), db)?;
             }
         }
