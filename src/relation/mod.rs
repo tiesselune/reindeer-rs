@@ -80,6 +80,7 @@ impl Relation {
                     if entity_link.1 == DeletionBehaviour::Error {
                         return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied,format!("Constrained related entity exists in {}",tree_link.0)))
                     }
+                    //TODO : verify that cascading entities can be removed
                 }
             }
         for (tree_name, behaviour) in E1::get_sibling_trees() {
@@ -88,16 +89,19 @@ impl Relation {
                 if tree.contains_key(e1)? {
                     return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied,format!("Constrained sibling entity exists in {}",&tree_name)))
                 }
+                //TODO : verify that cascading entities can be removed
             }
         }
         for (tree_name,behaviour) in E1::get_child_trees() {
             if behaviour != DeletionBehaviour::Error {
+                //TODO : verify that cascading entities can be removed
                 continue;
             }
             let tree = db.open_tree(&tree_name)?;
             if tree.scan_prefix(e1).count() > 0 {
                 return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied,format!("Constrained child entities exists in {}",&tree_name)));
             }
+            
         }
         Ok(())
     }
