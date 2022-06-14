@@ -8,6 +8,9 @@ pub use serde_derive::{Serialize,Deserialize};
 pub use relation::DeletionBehaviour;
 
 #[cfg(test)]
+mod test_entities;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn it_works() {}
