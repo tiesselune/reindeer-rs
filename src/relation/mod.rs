@@ -5,6 +5,7 @@ use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
 use self::descriptor::RelationDescriptor;
+pub use self::descriptor::FamilyDescriptor;
 
 pub struct Relation;
 
@@ -146,7 +147,7 @@ impl Relation {
     }
 
     fn tree_name(entity_tree: &str) -> String {
-        format!("__rel_{}", entity_tree)
+        format!("__$rel_{}", entity_tree)
     }
 
     fn get_descriptor_with_key_and_tree_name(

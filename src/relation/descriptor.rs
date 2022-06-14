@@ -15,6 +15,13 @@ pub struct RelationDescriptor {
     pub related_entities: RelationMap,
 }
 
+#[derive(Serialize, Deserialize,Default)]
+pub struct FamilyDescriptor {
+    pub tree_name : String,
+    pub sibling_trees : Vec<(String, DeletionBehaviour)>,
+    pub child_trees : Vec<(String, DeletionBehaviour)>,
+}
+
 impl RelationDescriptor {
     pub fn add_related<E: Entity>(&mut self, e: &E, behaviour : DeletionBehaviour) {
         let key = e.get_key().as_bytes();
@@ -43,5 +50,21 @@ impl RelationDescriptor {
 
     pub fn empty(&mut self) {
         self.related_entities = HashMap::default();
+    }
+}
+
+impl Entity for FamilyDescriptor {
+    type Key = String;
+
+    fn tree_name() -> &'static str {
+        "__$family_rel"
+    }
+
+    fn get_key(&self) -> Self::Key {
+        self.tree_name.clone()
+    }
+
+    fn set_key(&mut self, key: &Self::Key) {
+        self.tree_name = key.clone();
     }
 }

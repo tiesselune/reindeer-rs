@@ -1,6 +1,6 @@
 use std::{fs::File, io::ErrorKind};
 
-use crate::relation::{DeletionBehaviour, Relation};
+use crate::relation::{DeletionBehaviour, Relation, FamilyDescriptor};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
@@ -14,8 +14,18 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
-    fn get_child_trees() -> Vec<(String, DeletionBehaviour)> {
+    fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
+    }
+
+    fn register(db : &Db) -> std::io::Result<()> {
+        //TODO move in store ?
+        let desc = FamilyDescriptor {
+            tree_name : String::from(Self::tree_name()),
+            child_trees : Self::get_child_trees().iter().map(|e| (String::from(e.0),e.1)).collect(),
+            sibling_trees : Self::get_sibling_trees().iter().map(|e| (String::from(e.0),e.1)).collect(),
+        };
+        desc.save(db)
     }
 
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
