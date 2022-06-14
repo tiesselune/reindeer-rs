@@ -6,19 +6,21 @@ use std::hash::BuildHasherDefault;
 use crate::entity::AsBytes;
 use crate::Entity;
 
+use super::DeletionBehaviour;
+
 #[derive(Serialize, Deserialize)]
 pub struct RelationDescriptor {
-    pub related_entities: HashMap<String, Vec<Vec<u8>>, BuildHasherDefault<FxHasher>>,
+    pub related_entities: HashMap<String, Vec<(Vec<u8>,DeletionBehaviour)>, BuildHasherDefault<FxHasher>>,
 }
 
 impl RelationDescriptor {
-    pub fn add_related<E: Entity>(&mut self, e: &E) {
+    pub fn add_related<E: Entity>(&mut self, e: &E, behaviour : DeletionBehaviour) {
         let key = e.get_key().as_bytes();
         if let Some(v) = self.related_entities.get_mut(E::tree_name()) {
-            v.push(key)
+            v.push((key,behaviour))
         } else {
             self.related_entities
-                .insert(String::from(E::tree_name()), vec![key]);
+                .insert(String::from(E::tree_name()), vec![(key,behaviour)]);
         }
     }
 
@@ -30,7 +32,7 @@ impl RelationDescriptor {
         if let Some(v) = self.related_entities.get_mut(tree) {
             if let Some(index) = v
                 .iter()
-                .position(|value| value.to_ascii_lowercase() == e.to_ascii_lowercase())
+                .position(|(value,_)| value.to_ascii_lowercase() == e.to_ascii_lowercase())
             {
                 v.remove(index);
             }

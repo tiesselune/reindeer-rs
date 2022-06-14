@@ -14,7 +14,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
-    fn get_child_trees() -> Vec<&'static str> {
+    fn get_child_trees() -> Vec<(String, DeletionBehaviour)> {
         Vec::new()
     }
 
@@ -170,8 +170,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
-        for tree_name in &Self::get_child_trees() {
-            Self::remove_prefixed_in_tree(tree_name, key, db)?;
+        Self::can_be_removed(key,db)?;
+        for (tree_name,d) in &Self::get_child_trees() {
+            if *d == DeletionBehaviour::Cascade{
+                Self::remove_prefixed_in_tree(tree_name, key, db)?;
+            }
         }
         for (tree_name, behaviour) in &Self::get_sibling_trees() {
             let tree = db.open_tree(tree_name)?;
@@ -191,6 +194,11 @@ pub trait Entity: Serialize + DeserializeOwned {
             }
         }
         Relation::remove_entity_entry::<Self>(key, db)?;
+        Ok(())
+    }
+
+    fn can_be_removed(key : &[u8], db : &Db) -> std::io::Result<()> {
+        Relation::can_be_deleted::<Self>(key, db)?;
         Ok(())
     }
 
@@ -262,8 +270,8 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn create_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
-        Relation::create(self, other, db)
+    fn create_relation<E: Entity>(&self, other: &E, db: &Db, self_to_other : DeletionBehaviour,other_to_self : DeletionBehaviour) -> std::io::Result<()> {
+        Relation::create(self, other, self_to_other, other_to_self, db)
     }
 
     fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
@@ -280,10 +288,6 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     fn get_single_related<E: Entity>(&self, db: &Db) -> std::io::Result<E> {
         Relation::get_one::<Self, E>(self, db)
-    }
-
-    fn has_related<E: Entity>(&self, db: &Db) -> std::io::Result<bool> {
-        Relation::can_be_deleted(self, db)
     }
 
     fn save_sibling<E: Entity<Key = Self::Key>>(
