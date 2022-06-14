@@ -193,6 +193,7 @@ pub trait Entity: Serialize + DeserializeOwned {
                 }
             }
         }
+        Relation::delete_cascading_related::<Self>(key, db)?;
         Relation::remove_entity_entry::<Self>(key, db)?;
         Ok(())
     }

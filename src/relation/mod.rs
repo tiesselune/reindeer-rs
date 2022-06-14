@@ -74,7 +74,7 @@ impl Relation {
 
     pub fn can_be_deleted<E1: Entity>(e1: &[u8], db: &Db) -> std::io::Result<()> {
         let descriptor = Self::get_descriptor_with_key_and_tree_name(E1::tree_name(),e1, db)?;
-        if !descriptor.related_entities.is_empty() {
+
             for tree_link in &descriptor.related_entities {
                 for entity_link in tree_link.1 {
                     if entity_link.1 == DeletionBehaviour::Error {
@@ -82,7 +82,6 @@ impl Relation {
                     }
                 }
             }
-        }
         for (tree_name, behaviour) in E1::get_sibling_trees() {
             if behaviour == DeletionBehaviour::Error {
                 let tree = db.open_tree(&tree_name)?;
@@ -98,6 +97,18 @@ impl Relation {
             let tree = db.open_tree(&tree_name)?;
             if tree.scan_prefix(e1).count() > 0 {
                 return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied,format!("Constrained child entities exists in {}",&tree_name)));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn delete_cascading_related<E: Entity>(key : &[u8],db : &Db) -> std::io::Result<()> {
+        let descriptor = Self::get_descriptor_with_key_and_tree_name(E::tree_name(),key, db)?;
+        for (tree_name,entities) in &descriptor.related_entities {
+            for (key,deletion_behaviour) in entities {
+                if *deletion_behaviour == DeletionBehaviour::Cascade {
+                    db.open_tree(tree_name)?.remove(key)?;
+                }
             }
         }
         Ok(())
