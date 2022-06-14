@@ -1,35 +1,35 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::Entity;
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Entity1 {
-    id : u32,
+    id: u32,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Entity2 {
-    id : String,
+    id: String,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Entity3 {
-    id : u32,
+    id: u32,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Entity4 {
-    id : u32,
+    id: u32,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ChildEntity1 {
-    id : (String,u32),
+    id: (String, u32),
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ChildEntity2 {
-    id : (u32,u32),
+    id: (u32, u32),
 }
 
 impl Entity for Entity1 {
@@ -64,7 +64,6 @@ impl Entity for Entity2 {
     }
 }
 
-
 impl Entity for Entity3 {
     type Key = u32;
 
@@ -80,7 +79,6 @@ impl Entity for Entity3 {
         self.id = *key;
     }
 }
-
 
 impl Entity for Entity4 {
     type Key = u32;
@@ -99,7 +97,7 @@ impl Entity for Entity4 {
 }
 
 impl Entity for ChildEntity1 {
-    type Key = (String,u32);
+    type Key = (String, u32);
 
     fn tree_name() -> &'static str {
         "child_entity_1"
@@ -115,7 +113,7 @@ impl Entity for ChildEntity1 {
 }
 
 impl Entity for ChildEntity2 {
-    type Key = (u32,u32);
+    type Key = (u32, u32);
 
     fn tree_name() -> &'static str {
         "child_entity_2"

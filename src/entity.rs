@@ -1,6 +1,6 @@
 use std::{fs::File, io::ErrorKind};
 
-use crate::relation::{DeletionBehaviour, Relation, FamilyDescriptor};
+use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
@@ -18,12 +18,18 @@ pub trait Entity: Serialize + DeserializeOwned {
         Vec::new()
     }
 
-    fn register(db : &Db) -> std::io::Result<()> {
+    fn register(db: &Db) -> std::io::Result<()> {
         //TODO move in store ?
         let desc = FamilyDescriptor {
-            tree_name : String::from(Self::tree_name()),
-            child_trees : Self::get_child_trees().iter().map(|e| (String::from(e.0),e.1)).collect(),
-            sibling_trees : Self::get_sibling_trees().iter().map(|e| (String::from(e.0),e.1)).collect(),
+            tree_name: String::from(Self::tree_name()),
+            child_trees: Self::get_child_trees()
+                .iter()
+                .map(|e| (String::from(e.0), e.1))
+                .collect(),
+            sibling_trees: Self::get_sibling_trees()
+                .iter()
+                .map(|e| (String::from(e.0), e.1))
+                .collect(),
         };
         desc.save(db)
     }
@@ -180,9 +186,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Self::can_be_removed(key,db)?;
-        for (tree_name,d) in &Self::get_child_trees() {
-            if *d == DeletionBehaviour::Cascade{
+        Self::can_be_removed(key, db)?;
+        for (tree_name, d) in &Self::get_child_trees() {
+            if *d == DeletionBehaviour::Cascade {
                 Self::remove_prefixed_in_tree(tree_name, key, db)?;
             }
         }
@@ -208,7 +214,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn can_be_removed(key : &[u8], db : &Db) -> std::io::Result<()> {
+    fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
         Relation::can_be_deleted::<Self>(key, db)?;
         Ok(())
     }
@@ -285,7 +291,13 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn create_relation<E: Entity>(&self, other: &E, self_to_other : DeletionBehaviour, other_to_self : DeletionBehaviour, db: &Db) -> std::io::Result<()> {
+    fn create_relation<E: Entity>(
+        &self,
+        other: &E,
+        self_to_other: DeletionBehaviour,
+        other_to_self: DeletionBehaviour,
+        db: &Db,
+    ) -> std::io::Result<()> {
         Relation::create(self, other, self_to_other, other_to_self, db)
     }
 
@@ -315,7 +327,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> std::io::Result<Option<E>> {
-         E::get(&self.get_key(), db)
+        E::get(&self.get_key(), db)
     }
 
     fn save_child<E: Entity<Key = (Self::Key, u32)>>(

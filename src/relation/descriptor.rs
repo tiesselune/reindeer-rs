@@ -8,28 +8,28 @@ use crate::Entity;
 
 use super::DeletionBehaviour;
 
-type RelationMap = HashMap<String, Vec<(Vec<u8>,DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
+type RelationMap = HashMap<String, Vec<(Vec<u8>, DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
 
-#[derive(Serialize, Deserialize,Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct RelationDescriptor {
     pub related_entities: RelationMap,
 }
 
-#[derive(Serialize, Deserialize,Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct FamilyDescriptor {
-    pub tree_name : String,
-    pub sibling_trees : Vec<(String, DeletionBehaviour)>,
-    pub child_trees : Vec<(String, DeletionBehaviour)>,
+    pub tree_name: String,
+    pub sibling_trees: Vec<(String, DeletionBehaviour)>,
+    pub child_trees: Vec<(String, DeletionBehaviour)>,
 }
 
 impl RelationDescriptor {
-    pub fn add_related<E: Entity>(&mut self, e: &E, behaviour : DeletionBehaviour) {
+    pub fn add_related<E: Entity>(&mut self, e: &E, behaviour: DeletionBehaviour) {
         let key = e.get_key().as_bytes();
         if let Some(v) = self.related_entities.get_mut(E::tree_name()) {
-            v.push((key,behaviour))
+            v.push((key, behaviour))
         } else {
             self.related_entities
-                .insert(String::from(E::tree_name()), vec![(key,behaviour)]);
+                .insert(String::from(E::tree_name()), vec![(key, behaviour)]);
         }
     }
 
@@ -41,7 +41,7 @@ impl RelationDescriptor {
         if let Some(v) = self.related_entities.get_mut(tree) {
             if let Some(index) = v
                 .iter()
-                .position(|(value,_)| value.to_ascii_lowercase() == e.to_ascii_lowercase())
+                .position(|(value, _)| value.to_ascii_lowercase() == e.to_ascii_lowercase())
             {
                 v.remove(index);
             }
