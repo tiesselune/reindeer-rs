@@ -194,6 +194,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             keys.iter().for_each(|(k, _)| batch.remove(k.as_slice()));
             tree.apply_batch(batch)?;
         }
+        Relation::remove_entity_entry::<Self>(key, db)?;
         Ok(())
     }
 
