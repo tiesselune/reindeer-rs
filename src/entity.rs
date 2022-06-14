@@ -215,7 +215,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Relation::can_be_deleted::<Self>(key, db)?;
+        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), db)?;
         Ok(())
     }
 

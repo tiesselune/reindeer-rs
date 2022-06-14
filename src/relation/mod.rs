@@ -79,43 +79,82 @@ impl Relation {
         Relation::get_descriptor_with_key::<E1>(key, db)
     }
 
-    pub fn can_be_deleted<E1: Entity>(e1: &[u8], db: &Db) -> std::io::Result<()> {
-        let descriptor = Self::get_descriptor_with_key_and_tree_name(E1::tree_name(), e1, db)?;
+    pub fn can_be_deleted(tree_name : &str, e1: &[u8], already_checked : &Vec<(String,Vec<u8>)>, db: &Db) -> std::io::Result<()> {
+        if already_checked.iter().any(|(tn,k)| tn == tree_name && k == e1) {
+            return Ok(());
+        }
+        let descriptor = Self::get_descriptor_with_key_and_tree_name(tree_name, e1, db)?;
+        let family_descriptor = FamilyDescriptor::get(&String::from(tree_name),db)?;
 
-        for tree_link in &descriptor.related_entities {
-            for entity_link in tree_link.1 {
-                if entity_link.1 == DeletionBehaviour::Error {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        format!("Constrained related entity exists in {}", tree_link.0),
-                    ));
+        for (other_tree_name,entities) in &descriptor.related_entities {
+            for (key,deletion_behaviour) in entities {
+                match deletion_behaviour {
+                    &DeletionBehaviour::Error => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            format!("Constrained related entity exists in {}", other_tree_name),
+                        ));
+                    }
+                    &DeletionBehaviour::Cascade => {
+                        let mut new_already_checked = already_checked.clone();
+                        new_already_checked.push((String::from(tree_name),e1.to_vec()));
+                        Self::can_be_deleted(other_tree_name, key, &new_already_checked, db)?;
+                    },
+                    _ => {}
                 }
-                //TODO : verify that cascading entities can be removed
             }
         }
-        for (tree_name, behaviour) in E1::get_sibling_trees() {
-            if behaviour == DeletionBehaviour::Error {
-                let tree = db.open_tree(&tree_name)?;
-                if tree.contains_key(e1)? {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        format!("Constrained sibling entity exists in {}", &tree_name),
-                    ));
-                }
-                //TODO : verify that cascading entities can be removed
+        if family_descriptor.is_none() {
+            return Ok(());
+        }
+        let family_descriptor = family_descriptor.unwrap();
+        for (other_tree_name, behaviour) in &family_descriptor.sibling_trees {
+            match behaviour {
+                DeletionBehaviour::Error =>  {
+                    let tree = db.open_tree(&other_tree_name)?;
+                    if tree.contains_key(e1)? {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            format!("Constrained sibling entity exists in {}", &other_tree_name),
+                        ));
+                    }
+                },
+                DeletionBehaviour::Cascade => {
+                    let mut new_already_checked = already_checked.clone();
+                    new_already_checked.push((String::from(tree_name),e1.to_vec()));
+                    Self::can_be_deleted(&other_tree_name, e1, &new_already_checked, db)?;
+                },
+                _ => {}
             }
         }
-        for (tree_name, behaviour) in E1::get_child_trees() {
-            if behaviour != DeletionBehaviour::Error {
-                //TODO : verify that cascading entities can be removed
-                continue;
-            }
-            let tree = db.open_tree(&tree_name)?;
-            if tree.scan_prefix(e1).count() > 0 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    format!("Constrained child entities exists in {}", &tree_name),
-                ));
+        for (other_tree_name, behaviour) in &family_descriptor.child_trees  {
+            match behaviour {
+                DeletionBehaviour::Error =>  {
+                    let tree = db.open_tree(&other_tree_name)?;
+                    if tree.scan_prefix(e1).count() > 0 {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            format!("Constrained child entity exists in {}", &other_tree_name),
+                        ));
+                    }
+                },
+                DeletionBehaviour::Cascade => {
+                    let mut new_already_checked = already_checked.clone();
+                    new_already_checked.push((String::from(tree_name),e1.to_vec()));
+                    let tree = db.open_tree(&other_tree_name)?;
+                    let keys = tree.scan_prefix(e1).filter_map(|e| {
+                        if let Ok((key,_)) = e{
+                            Some(key.to_vec())
+                        }
+                        else {
+                            None
+                        }
+                    }).collect::<Vec<Vec<u8>>>();
+                    for key in keys {
+                        Self::can_be_deleted(other_tree_name, &key, &new_already_checked.clone(), db)?;
+                    }
+                },
+                _ => {}
             }
         }
         Ok(())
