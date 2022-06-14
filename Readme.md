@@ -18,6 +18,8 @@ use sled_entity::Db;
 let db = sled_entity::open("./")?;
 ```
 
+:bulb: Since this is just a `sled` DB, this object can be copied and sent accross threads safely.
+
 ### Implement the `Entity` trait on your `struct`
 
 Entities need to implement the `Serialize` and `Deserialize` traits from `serde`, which are conveniently re-exported from `sled_entity`:
@@ -54,6 +56,17 @@ impl Entity for MyStruct{
         self.id = key;
     }
 }
+```
+
+### Register your entity with the system
+
+Register the entity once, when you launch your application.
+
+```rs
+let db = sled_entity::open("./")?;
+```
+```rs
+MyStruct::register(db)?;
 ```
 
 ### Save an instance to the database
