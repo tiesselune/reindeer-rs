@@ -288,6 +288,7 @@ e1.remove_relation_with_key::<OtherEntity>(otherKey,db)?;
 If your entity `Key` type is `u32`, you can auto-increment new entities using
 
 ```rs
+use sled_entity::AutoIncrementEntity;
 let mut new_entity = Entity {
     id : 0 // if you setup id with any key, saving will update it
     /* ... */
@@ -297,3 +298,5 @@ new_entity.save_next(db)?;
 ```
 
 You entitie's key will be automatically updated with `set_key` to match the last found entry's ID, incremented by 1.
+
+:bulb: Note that the `AutoIncrementEntity` trait needs to be in scope.
