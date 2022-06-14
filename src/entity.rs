@@ -271,7 +271,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-    fn create_relation<E: Entity>(&self, other: &E, db: &Db, self_to_other : DeletionBehaviour,other_to_self : DeletionBehaviour) -> std::io::Result<()> {
+    fn create_relation<E: Entity>(&self, other: &E, self_to_other : DeletionBehaviour, other_to_self : DeletionBehaviour, db: &Db) -> std::io::Result<()> {
         Relation::create(self, other, self_to_other, other_to_self, db)
     }
 
