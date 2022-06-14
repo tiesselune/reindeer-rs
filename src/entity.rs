@@ -185,6 +185,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
+    #[doc(hidden)]
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
         let mut to_be_removed = RelationDescriptor::default();
         Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut to_be_removed, db)?;
@@ -197,6 +198,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         Relation::remove_entity_entry::<Self>(key, db)?;
         Ok(())
     }
+
 
     fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
         Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut RelationDescriptor::default(), db)?;
@@ -212,11 +214,13 @@ pub trait Entity: Serialize + DeserializeOwned {
         Self::get_tree(db)?.remove(key)?;
         Ok(())
     }
-
+    
+    #[doc(hidden)]
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
         Self::remove_prefixed_in_tree(Self::tree_name(), &prefix.as_bytes(), db)
     }
-
+    
+    #[doc(hidden)]
     fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> std::io::Result<()> {
         let tree = db.open_tree(tree_name)?;
         let mut batch = Batch::default();
