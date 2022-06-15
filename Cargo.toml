@@ -6,7 +6,7 @@ description = "A small entity-based embedded database with a minimal no-SQL rela
 license = "MIT"
 readme = "Readme.md"
 repository = "https://github.com/tiesselune/reindeer-rs"
-keywords = ["database", "embedded","entity","relationnal","nosql","sled","bincode"]
+keywords = ["sled","database","entity","rocksdb","bincode"]
 categories = ["database","filesystem"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
