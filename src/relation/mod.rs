@@ -79,18 +79,30 @@ impl Relation {
         Relation::get_descriptor_with_key::<E1>(key, db)
     }
 
-    pub fn can_be_deleted(tree_name : &str, e1: &[u8], already_checked : &[(String,Vec<u8>)], removable_entities : &mut RelationDescriptor, db: &Db) -> std::io::Result<()> {
-        if already_checked.iter().any(|(tn,k)| tn == tree_name && k == e1) {
+    pub fn can_be_deleted(
+        tree_name: &str,
+        e1: &[u8],
+        already_checked: &[(String, Vec<u8>)],
+        removable_entities: &mut RelationDescriptor,
+        db: &Db,
+    ) -> std::io::Result<()> {
+        if already_checked
+            .iter()
+            .any(|(tn, k)| tn == tree_name && k == e1)
+        {
             return Ok(());
         }
         let descriptor = Self::get_descriptor_with_key_and_tree_name(tree_name, e1, db)?;
-        let family_descriptor = FamilyDescriptor::get(&String::from(tree_name),db)?;
+        let family_descriptor = FamilyDescriptor::get(&String::from(tree_name), db)?;
 
-        for (other_tree_name,entities) in &descriptor.related_entities {
-            for (key,deletion_behaviour) in entities {
+        for (other_tree_name, entities) in &descriptor.related_entities {
+            for (key, deletion_behaviour) in entities {
                 match deletion_behaviour {
                     DeletionBehaviour::Error => {
-                        if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k.as_bytes() == key.as_bytes()) {
+                        if already_checked
+                            .iter()
+                            .any(|(tn, k)| tn == other_tree_name && k.as_bytes() == key.as_bytes())
+                        {
                             continue;
                         }
                         return Err(std::io::Error::new(
@@ -100,22 +112,38 @@ impl Relation {
                     }
                     DeletionBehaviour::Cascade => {
                         let mut new_already_checked = already_checked.to_owned();
-                        new_already_checked.push((String::from(tree_name),e1.to_vec()));
-                        Self::can_be_deleted(other_tree_name, key, &new_already_checked, removable_entities, db)?;
-                        removable_entities.add_related_by_key(other_tree_name, key, DeletionBehaviour::Cascade);
-                    },
+                        new_already_checked.push((String::from(tree_name), e1.to_vec()));
+                        Self::can_be_deleted(
+                            other_tree_name,
+                            key,
+                            &new_already_checked,
+                            removable_entities,
+                            db,
+                        )?;
+                        removable_entities.add_related_by_key(
+                            other_tree_name,
+                            key,
+                            DeletionBehaviour::Cascade,
+                        );
+                    }
                     _ => {}
                 }
             }
         }
         if family_descriptor.is_none() {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other,format!("Trying to use unregistered entity {}",tree_name)));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Trying to use unregistered entity {}", tree_name),
+            ));
         }
         let family_descriptor = family_descriptor.unwrap();
         for (other_tree_name, behaviour) in &family_descriptor.sibling_trees {
             match behaviour {
-                DeletionBehaviour::Error =>  {
-                    if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k == e1) {
+                DeletionBehaviour::Error => {
+                    if already_checked
+                        .iter()
+                        .any(|(tn, k)| tn == other_tree_name && k == e1)
+                    {
                         continue;
                     }
                     let tree = db.open_tree(&other_tree_name)?;
@@ -125,19 +153,29 @@ impl Relation {
                             format!("Constrained sibling entity exists in {}", &other_tree_name),
                         ));
                     }
-                },
+                }
                 DeletionBehaviour::Cascade => {
                     let mut new_already_checked = already_checked.to_owned();
-                    new_already_checked.push((String::from(tree_name),e1.to_vec()));
-                    Self::can_be_deleted(other_tree_name, e1, &new_already_checked,removable_entities, db)?;
-                    removable_entities.add_related_by_key(other_tree_name, e1, DeletionBehaviour::Cascade);
-                },
+                    new_already_checked.push((String::from(tree_name), e1.to_vec()));
+                    Self::can_be_deleted(
+                        other_tree_name,
+                        e1,
+                        &new_already_checked,
+                        removable_entities,
+                        db,
+                    )?;
+                    removable_entities.add_related_by_key(
+                        other_tree_name,
+                        e1,
+                        DeletionBehaviour::Cascade,
+                    );
+                }
                 _ => {}
             }
         }
-        for (other_tree_name, behaviour) in &family_descriptor.child_trees  {
+        for (other_tree_name, behaviour) in &family_descriptor.child_trees {
             match behaviour {
-                DeletionBehaviour::Error =>  {
+                DeletionBehaviour::Error => {
                     let tree = db.open_tree(&other_tree_name)?;
                     if tree.scan_prefix(e1).count() > 0 {
                         return Err(std::io::Error::new(
@@ -145,24 +183,36 @@ impl Relation {
                             format!("Constrained child entity exists in {}", &other_tree_name),
                         ));
                     }
-                },
+                }
                 DeletionBehaviour::Cascade => {
                     let mut new_already_checked = already_checked.to_owned();
-                    new_already_checked.push((String::from(tree_name),e1.to_vec()));
+                    new_already_checked.push((String::from(tree_name), e1.to_vec()));
                     let tree = db.open_tree(&other_tree_name)?;
-                    let keys = tree.scan_prefix(e1).filter_map(|e| {
-                        if let Ok((key,_)) = e{
-                            Some(key.to_vec())
-                        }
-                        else {
-                            None
-                        }
-                    }).collect::<Vec<Vec<u8>>>();
+                    let keys = tree
+                        .scan_prefix(e1)
+                        .filter_map(|e| {
+                            if let Ok((key, _)) = e {
+                                Some(key.to_vec())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<Vec<u8>>>();
                     for key in keys {
-                        Self::can_be_deleted(other_tree_name, &key, &new_already_checked.clone(),removable_entities, db)?;
-                        removable_entities.add_related_by_key(other_tree_name, &key, DeletionBehaviour::Cascade);
+                        Self::can_be_deleted(
+                            other_tree_name,
+                            &key,
+                            &new_already_checked.clone(),
+                            removable_entities,
+                            db,
+                        )?;
+                        removable_entities.add_related_by_key(
+                            other_tree_name,
+                            &key,
+                            DeletionBehaviour::Cascade,
+                        );
                     }
-                },
+                }
                 _ => {}
             }
         }

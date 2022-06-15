@@ -8,7 +8,8 @@ use crate::Entity;
 
 use super::DeletionBehaviour;
 
-pub type RelationMap = HashMap<String, Vec<(Vec<u8>, DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
+pub type RelationMap =
+    HashMap<String, Vec<(Vec<u8>, DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct RelationDescriptor {
@@ -25,10 +26,15 @@ pub struct FamilyDescriptor {
 impl RelationDescriptor {
     pub fn add_related<E: Entity>(&mut self, e: &E, behaviour: DeletionBehaviour) {
         let key = e.get_key().as_bytes();
-        self.add_related_by_key(E::tree_name(),&key,behaviour);
+        self.add_related_by_key(E::tree_name(), &key, behaviour);
     }
 
-    pub fn add_related_by_key(&mut self, tree_name : &str, key : &[u8], behaviour: DeletionBehaviour) {
+    pub fn add_related_by_key(
+        &mut self,
+        tree_name: &str,
+        key: &[u8],
+        behaviour: DeletionBehaviour,
+    ) {
         if let Some(v) = self.related_entities.get_mut(tree_name) {
             v.push((key.to_vec(), behaviour))
         } else {

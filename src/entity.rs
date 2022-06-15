@@ -188,8 +188,8 @@ pub trait Entity: Serialize + DeserializeOwned {
     #[doc(hidden)]
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
         let mut to_be_removed = RelationDescriptor::default();
-        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut to_be_removed, db)?;
-        for (tree,keys) in &to_be_removed.related_entities {
+        Relation::can_be_deleted(Self::tree_name(), key, &Vec::new(), &mut to_be_removed, db)?;
+        for (tree, keys) in &to_be_removed.related_entities {
             let tree = db.open_tree(tree)?;
             let mut batch = Batch::default();
             keys.iter().for_each(|(k, _)| batch.remove(k.as_slice()));
@@ -199,9 +199,14 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(())
     }
 
-
     fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
-        Relation::can_be_deleted(Self::tree_name(),key, &Vec::new(), &mut RelationDescriptor::default(), db)?;
+        Relation::can_be_deleted(
+            Self::tree_name(),
+            key,
+            &Vec::new(),
+            &mut RelationDescriptor::default(),
+            db,
+        )?;
         Ok(())
     }
 
@@ -219,7 +224,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
         Self::remove_prefixed_in_tree(Self::tree_name(), &prefix.as_bytes(), db)
     }
-    
+
     #[doc(hidden)]
     fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> std::io::Result<()> {
         let tree = db.open_tree(tree_name)?;
@@ -325,7 +330,13 @@ pub trait Entity: Serialize + DeserializeOwned {
     ) -> std::io::Result<E::Key> {
         let increment = match E::get_tree(db)?.last()? {
             Some((key, _)) => {
-                let u32_part = key.iter().rev().take(size_of::<u32>()).rev().copied().collect::<Vec<u8>>();
+                let u32_part = key
+                    .iter()
+                    .rev()
+                    .take(size_of::<u32>())
+                    .rev()
+                    .copied()
+                    .collect::<Vec<u8>>();
                 u32::from_be_bytes(u32_part.try_into().unwrap()) + 1
             }
             None => Default::default(),
