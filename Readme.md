@@ -4,7 +4,7 @@
 
 ## A small structural layer on top of `sled`, `serde` and `bincode`
 
-Reindeer is a small entity store built on top of [`sled`](https://sled.rs/), using serde and bincode for serialization, written entirely in rust.
+Reindeer is a small embedded entity store built on top of [`sled`](https://sled.rs/), using `serde and bincode for serialization, written entirely in rust.
 
 It serves as a convenient middle ground to store, retreive and update structs in an embedded database with a bare-minimum relationnal model.
 
