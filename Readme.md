@@ -17,7 +17,7 @@ use reindeer::Db;
 ```
 
 ```rust
-let db = reindeer::open("./")?;
+let db = reindeer::open("./my-db")?;
 ```
 
 :bulb: Since this is just a `sled` DB, this object can be copied and sent accross threads safely.
