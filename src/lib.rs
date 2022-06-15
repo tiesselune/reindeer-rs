@@ -33,7 +33,8 @@
 //!  - `DeletionBehaviour::Error` : Trying to remove this entity as related entities still exist will cause an error and abort
 //!  - `DeletionBehaviour::BreakLink` : Remove this entity and the links with its related entites, leaving the other ones untouched
 
-pub mod entity;
+mod entity;
+mod error;
 mod relation;
 pub use entity::AutoIncrementEntity;
 pub use entity::Entity;
@@ -41,6 +42,7 @@ pub use relation::DeletionBehaviour;
 pub use serde_derive::{Deserialize, Serialize};
 pub use sled::open;
 pub use sled::Db;
+pub use error::{Error,ErrorKind,Result};
 
 #[cfg(test)]
 mod test;

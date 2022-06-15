@@ -1,4 +1,5 @@
 use crate::AutoIncrementEntity;
+use crate::error::Result;
 use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
@@ -125,7 +126,7 @@ impl Entity for ChildEntity2 {
     }
 }
 
-pub fn set_up(name: &str) -> std::io::Result<Db> {
+pub fn set_up(name: &str) -> Result<Db> {
     let mut dir = std::env::temp_dir();
     dir.push(name);
 
@@ -138,7 +139,7 @@ pub fn set_up(name: &str) -> std::io::Result<Db> {
     Ok(db)
 }
 
-pub fn set_up_content(db: &Db) -> std::io::Result<()> {
+pub fn set_up_content(db: &Db) -> Result<()> {
     let mut e1 = Entity1 {
         id: 0,
         prop1: String::from("Hello, World!"),
@@ -176,8 +177,9 @@ pub fn set_up_content(db: &Db) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn tear_down(name: &str) -> std::io::Result<()> {
+pub fn tear_down(name: &str) -> Result<()> {
     let mut dir = std::env::temp_dir();
     dir.push(name);
-    std::fs::remove_dir_all(dir.to_str().unwrap())
+    std::fs::remove_dir_all(dir.to_str().unwrap())?;
+    Ok(())
 }

@@ -1,6 +1,6 @@
 mod test_entities;
 
-use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity};
+use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result};
 use test_entities::{
     set_up, set_up_content, tear_down, ChildEntity1, ChildEntity2, Entity1, Entity2, Entity3,
 };
@@ -10,7 +10,7 @@ fn get_random_name() -> String {
     format!("sled-entity-test-{}", Uuid::new_v4())
 }
 #[test]
-fn create_and_register() -> Result<(), std::io::Error> {
+fn create_and_register() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     assert!(FamilyDescriptor::exists(&String::from("entity_1"), &db)?);
@@ -27,7 +27,7 @@ fn create_and_register() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_save_save_next_and_get() -> Result<(), std::io::Error> {
+fn test_save_save_next_and_get() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -55,7 +55,7 @@ fn test_save_save_next_and_get() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_save_and_get_children() -> Result<(), std::io::Error> {
+fn test_save_and_get_children() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -69,7 +69,7 @@ fn test_save_and_get_children() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_cascade_children() -> Result<(), std::io::Error> {
+fn test_cascade_children() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -84,7 +84,7 @@ fn test_cascade_children() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_delete_children_error() -> Result<(), std::io::Error> {
+fn test_delete_children_error() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -100,7 +100,7 @@ fn test_delete_children_error() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_add_sibling() -> Result<(), std::io::Error> {
+fn test_add_sibling() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -118,7 +118,7 @@ fn test_add_sibling() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_delete_sibling_cascade() -> Result<(), std::io::Error> {
+fn test_delete_sibling_cascade() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -137,7 +137,7 @@ fn test_delete_sibling_cascade() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_delete_sibling_error() -> Result<(), std::io::Error> {
+fn test_delete_sibling_error() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -156,7 +156,7 @@ fn test_delete_sibling_error() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_free_relation() -> Result<(), std::io::Error> {
+fn test_free_relation() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -188,7 +188,7 @@ fn test_free_relation() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_free_relation_cascade() -> Result<(), std::io::Error> {
+fn test_free_relation_cascade() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -226,7 +226,7 @@ fn test_free_relation_cascade() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_free_relation_error() -> Result<(), std::io::Error> {
+fn test_free_relation_error() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -262,7 +262,7 @@ fn test_free_relation_error() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_recursive_cascade() -> Result<(), std::io::Error> {
+fn test_recursive_cascade() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
@@ -299,7 +299,7 @@ fn test_recursive_cascade() -> Result<(), std::io::Error> {
 }
 
 #[test]
-fn test_recursive_error() -> Result<(), std::io::Error> {
+fn test_recursive_error() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;

@@ -1,5 +1,7 @@
 mod descriptor;
 
+use crate::error::Result;
+use crate::{Error, ErrorKind};
 use crate::entity::{AsBytes, Entity};
 use serde_derive::{Deserialize, Serialize};
 use sled::Db;
@@ -16,19 +18,19 @@ impl Relation {
         e1_to_e2: DeletionBehaviour,
         e2_to_e1: DeletionBehaviour,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         Relation::create_link(e1, e2, e1_to_e2, db)?;
         Relation::create_link(e2, e1, e2_to_e1, db)?;
         Ok(())
     }
 
-    pub fn remove<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> std::io::Result<()> {
+    pub fn remove<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> Result<()> {
         Relation::remove_link(e1, e2, db)?;
         Relation::remove_link(e2, e1, db)?;
         Ok(())
     }
 
-    pub fn remove_entity_entry<E1: Entity>(key: &[u8], db: &Db) -> std::io::Result<()> {
+    pub fn remove_entity_entry<E1: Entity>(key: &[u8], db: &Db) -> Result<()> {
         let descriptor = Self::get_descriptor_with_key::<E1>(key, db)?;
         for (tree_name, referers) in descriptor.related_entities {
             for referer in referers {
@@ -50,7 +52,7 @@ impl Relation {
         e1: &[u8],
         e2: &[u8],
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         Relation::remove_link_with_keys::<E1, E2>(e1, e2, db)?;
         Relation::remove_link_with_keys::<E2, E1>(e2, e1, db)?;
         Ok(())
@@ -62,20 +64,20 @@ impl Relation {
         tree2: &str,
         e2: &[u8],
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         Relation::remove_link_with_keys_and_tree_names(tree1, e1, tree2, e2, db)?;
         Relation::remove_link_with_keys_and_tree_names(tree2, e2, tree1, e1, db)?;
         Ok(())
     }
 
-    pub fn relations<E1: Entity>(e1: &E1, db: &Db) -> std::io::Result<RelationDescriptor> {
+    pub fn relations<E1: Entity>(e1: &E1, db: &Db) -> Result<RelationDescriptor> {
         Relation::get_descriptor(e1, db)
     }
 
     pub fn relations_with_key<E1: Entity>(
         key: &[u8],
         db: &Db,
-    ) -> std::io::Result<RelationDescriptor> {
+    ) -> Result<RelationDescriptor> {
         Relation::get_descriptor_with_key::<E1>(key, db)
     }
 
@@ -85,7 +87,7 @@ impl Relation {
         already_checked: &[(String, Vec<u8>)],
         removable_entities: &mut RelationDescriptor,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         if already_checked
             .iter()
             .any(|(tn, k)| tn == tree_name && k == e1)
@@ -105,8 +107,8 @@ impl Relation {
                         {
                             continue;
                         }
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::PermissionDenied,
+                        return Err(Error::new(
+                            ErrorKind::IntegrityError,
                             format!("Constrained related entity exists in {}", other_tree_name),
                         ));
                     }
@@ -131,8 +133,8 @@ impl Relation {
             }
         }
         if family_descriptor.is_none() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(Error::new(
+                ErrorKind::UnregisteredEntity,
                 format!("Trying to use unregistered entity {}", tree_name),
             ));
         }
@@ -148,8 +150,8 @@ impl Relation {
                     }
                     let tree = db.open_tree(&other_tree_name)?;
                     if tree.contains_key(e1)? {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::PermissionDenied,
+                        return Err(Error::new(
+                            ErrorKind::IntegrityError,
                             format!("Constrained sibling entity exists in {}", &other_tree_name),
                         ));
                     }
@@ -178,8 +180,8 @@ impl Relation {
                 DeletionBehaviour::Error => {
                     let tree = db.open_tree(&other_tree_name)?;
                     if tree.scan_prefix(e1).count() > 0 {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::PermissionDenied,
+                        return Err(Error::new(
+                            ErrorKind::IntegrityError,
                             format!("Constrained child entity exists in {}", &other_tree_name),
                         ));
                     }
@@ -219,7 +221,7 @@ impl Relation {
         Ok(())
     }
 
-    pub fn get<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<Vec<E2>> {
+    pub fn get<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> Result<Vec<E2>> {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             Ok(E2::get_each_u8(
@@ -235,7 +237,7 @@ impl Relation {
         }
     }
 
-    pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<E2> {
+    pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> Result<E2> {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             if !related_keys.is_empty() {
@@ -244,9 +246,9 @@ impl Relation {
                 }
             }
         }
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "No related entities were found.",
+        Err(Error::new(
+            ErrorKind::NotFound,
+            String::from("No related entities were found."),
         ))
     }
 
@@ -258,7 +260,7 @@ impl Relation {
         tree_name: &str,
         e: &[u8],
         db: &Db,
-    ) -> std::io::Result<RelationDescriptor> {
+    ) -> Result<RelationDescriptor> {
         let tree = db.open_tree(Relation::tree_name(tree_name))?;
         match tree.get(e)? {
             Some(relation_descriptor) => {
@@ -271,11 +273,11 @@ impl Relation {
     fn get_descriptor_with_key<E: Entity>(
         e: &[u8],
         db: &Db,
-    ) -> std::io::Result<RelationDescriptor> {
+    ) -> Result<RelationDescriptor> {
         Self::get_descriptor_with_key_and_tree_name(E::store_name(), e, db)
     }
 
-    fn get_descriptor<E: Entity>(e: &E, db: &Db) -> std::io::Result<RelationDescriptor> {
+    fn get_descriptor<E: Entity>(e: &E, db: &Db) -> Result<RelationDescriptor> {
         Self::get_descriptor_with_key::<E>(&e.get_key().as_bytes(), db)
     }
 
@@ -283,7 +285,7 @@ impl Relation {
         e: &[u8],
         r_d: &RelationDescriptor,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         let tree = db.open_tree(Relation::tree_name(E::store_name()))?;
         tree.insert(e, bincode::serialize(r_d).unwrap())?;
         Ok(())
@@ -304,7 +306,7 @@ impl Relation {
         e: &E,
         r_d: &RelationDescriptor,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         Self::save_descriptor_with_key::<E>(&e.get_key().as_bytes(), r_d, db)
     }
 
@@ -313,7 +315,7 @@ impl Relation {
         e2: &E2,
         e1_to_e2: DeletionBehaviour,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         let mut e1_descriptor = Self::get_descriptor(e1, db)?;
         e1_descriptor.add_related(e2, e1_to_e2);
         Self::save_descriptor(e1, &e1_descriptor, db)?;
@@ -324,7 +326,7 @@ impl Relation {
         e1: &[u8],
         e2: &[u8],
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         let mut e1_descriptor = Self::get_descriptor_with_key::<E1>(e1, db)?;
         e1_descriptor.remove_related_by_key::<E2>(e2);
         Self::save_descriptor_with_key::<E1>(e1, &e1_descriptor, db)?;
@@ -337,14 +339,14 @@ impl Relation {
         tree2: &str,
         e2: &[u8],
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         let mut e1_descriptor = Self::get_descriptor_with_key_and_tree_name(tree1, e1, db)?;
         e1_descriptor.remove_related_by_key_and_tree_name(tree2, e2);
         Self::save_descriptor_with_key_and_tree_name(tree1, e1, &e1_descriptor, db)?;
         Ok(())
     }
 
-    fn remove_link<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> std::io::Result<()> {
+    fn remove_link<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> Result<()> {
         Relation::remove_link_with_keys::<E1, E2>(
             &e1.get_key().as_bytes(),
             &e2.get_key().as_bytes(),

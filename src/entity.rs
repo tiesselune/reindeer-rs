@@ -2,12 +2,13 @@
 //! This module provides the `Entity` trait as well as other utilities to manipulate entities and entity stores.
 //! For relation-related definitions, take a look a the [`relation` module](relation/index.html).
 
-use std::{fs::File, io::ErrorKind, mem::size_of};
+use std::{fs::File, mem::size_of};
 
 use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation, RelationDescriptor};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
+use crate::error::Result;
 
 /// The `Entity` trait provides document store capabilities for any struct that implements it.
 /// 
@@ -162,7 +163,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// MyStruct::register(&db)?;
     /// ```
-    fn register(db: &Db) -> std::io::Result<()> {
+    fn register(db: &Db) -> Result<()> {
         let desc = FamilyDescriptor {
             tree_name: String::from(Self::store_name()),
             child_trees: Self::get_child_trees()
@@ -174,13 +175,13 @@ pub trait Entity: Serialize + DeserializeOwned {
                 .map(|e| (String::from(e.0), e.1))
                 .collect(),
         };
-        desc.save(db)
+        desc.save(db)?;
+        Ok(())
     }
 
     #[doc(hidden)]
-    fn get_tree(db: &Db) -> std::io::Result<Tree> {
-        db.open_tree(Self::store_name())
-            .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not open tree"))
+    fn get_tree(db: &Db) -> Result<Tree> {
+        Ok(db.open_tree(Self::store_name())?)
     }
 
     #[doc(hidden)]
@@ -204,8 +205,8 @@ pub trait Entity: Serialize + DeserializeOwned {
     ///     /* ... */
     /// }
     /// ```
-    fn get(key: &Self::Key, db: &Db) -> std::io::Result<Option<Self>> {
-        Self::get_from_u8_array(&key.as_bytes(), db)
+    fn get(key: &Self::Key, db: &Db) -> Result<Option<Self>> {
+        Ok(Self::get_from_u8_array(&key.as_bytes(), db)?)
     }
 
     /// Retrieves all entities of a given type.
@@ -219,7 +220,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let entities = MyStruct::get_all(&db)?;
     /// ```
-    fn get_all(db: &Db) -> std::io::Result<Vec<Self>> {
+    fn get_all(db: &Db) -> Result<Vec<Self>> {
         Ok(Self::get_tree(db)?
             .iter()
             .map(|elem| Self::from_ivec(elem.unwrap().1))
@@ -232,20 +233,19 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let count = MyStruct::get_count()?;
     /// ```
-    fn get_count(db: &Db) -> std::io::Result<usize> {
+    fn get_count(db: &Db) -> Result<usize> {
         Ok(Self::get_tree(db)?.len())
     }
 
     #[doc(hidden)]
-    fn get_from_u8_array(key: &[u8], db: &Db) -> std::io::Result<Option<Self>> {
+    fn get_from_u8_array(key: &[u8], db: &Db) -> Result<Option<Self>> {
         Ok(Self::get_tree(db)?
-            .get(key)
-            .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not search tree"))?
+            .get(key)?
             .map(|vec| Self::from_ivec(vec)))
     }
 
     #[doc(hidden)]
-    fn get_with_prefix(key: &impl AsBytes, db: &Db) -> std::io::Result<Vec<Self>> {
+    fn get_with_prefix(key: &impl AsBytes, db: &Db) -> Result<Vec<Self>> {
         Ok(Self::get_tree(db)?
             .scan_prefix(key.as_bytes())
             .map(|elem| Self::from_ivec(elem.unwrap().1))
@@ -260,7 +260,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let entities = MyStruct::get_in_range(10,30,&db)?;
     /// ```
-    fn get_in_range(start: impl AsBytes, end: impl AsBytes, db: &Db) -> std::io::Result<Vec<Self>> {
+    fn get_in_range(start: impl AsBytes, end: impl AsBytes, db: &Db) -> Result<Vec<Self>> {
         Ok(Self::get_tree(db)?
             .range(start.as_bytes()..end.as_bytes())
             .map(|elem| Self::from_ivec(elem.unwrap().1))
@@ -286,7 +286,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         count: usize,
         parent: Option<impl AsBytes>,
         db: &Db,
-    ) -> std::io::Result<Vec<Self>> {
+    ) -> Result<Vec<Self>> {
         let mut iter = if let Some(prefix) = parent {
             Self::get_tree(db)?.scan_prefix(prefix.as_bytes())
         } else {
@@ -326,7 +326,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         offset: usize,
         prefix: Option<impl AsBytes>,
         db: &Db,
-    ) -> std::io::Result<Vec<Self>> {
+    ) -> Result<Vec<Self>> {
         let mut iter = if let Some(prefix) = prefix {
             Self::get_tree(db)?.scan_prefix(prefix.as_bytes())
         } else {
@@ -356,7 +356,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let entities = MyStruct::get_with_filter(|m_struct| m_struct.prop > 20,&db)?;
     /// ```
-    fn get_with_filter<F: Fn(&Self) -> bool>(f: F, db: &Db) -> std::io::Result<Vec<Self>> {
+    fn get_with_filter<F: Fn(&Self) -> bool>(f: F, db: &Db) -> Result<Vec<Self>> {
         Ok(Self::get_tree(db)?
             .iter()
             .map(|elem| Self::from_ivec(elem.unwrap().1))
@@ -401,7 +401,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let my_struct = MyStruct { key : 0, prop1 : String::from("Hello"), prop2 : 554};
     /// my_struct.save(&db)?;
     /// ```
-    fn save(&self, db: &Db) -> std::io::Result<()> {
+    fn save(&self, db: &Db) -> Result<()> {
         Self::get_tree(db)?.insert(
             &self.get_key().as_bytes(),
             bincode::serialize(self).unwrap(),
@@ -416,7 +416,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// MyStruct::update(&3,|my_struct| my_struct.prop1++,&db)?;
     /// ```
-    fn update<F: Fn(&mut Self)>(key: &Self::Key, f: F, db: &Db) -> std::io::Result<()> {
+    fn update<F: Fn(&mut Self)>(key: &Self::Key, f: F, db: &Db) -> Result<()> {
         Self::get_tree(db)?
             .fetch_and_update(&key.as_bytes(), |e| {
                 e.map(|u8_arr| {
@@ -424,9 +424,6 @@ pub trait Entity: Serialize + DeserializeOwned {
                     f(&mut value);
                     value.to_ivec()
                 })
-            })
-            .map_err(|_| {
-                std::io::Error::new(std::io::ErrorKind::Other, "Could not update object")
             })?;
         Ok(())
     }
@@ -443,7 +440,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         filter: F,
         modifier: M,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         let mut res = Self::get_with_filter(filter, db)?;
         for entity in &mut res {
             modifier(entity);
@@ -453,7 +450,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     #[doc(hidden)]
-    fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
+    fn pre_remove(key: &[u8], db: &Db) -> Result<()> {
         let mut to_be_removed = RelationDescriptor::default();
         Relation::can_be_deleted(Self::store_name(), key, &Vec::new(), &mut to_be_removed, db)?;
         for (tree, keys) in &to_be_removed.related_entities {
@@ -467,7 +464,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     #[doc(hidden)]
-    fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
+    fn can_be_removed(key: &[u8], db: &Db) -> Result<()> {
         Relation::can_be_deleted(
             Self::store_name(),
             key,
@@ -486,24 +483,24 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// MyStruct::remove(&3, &db);
     /// ```
-    fn remove(key: &Self::Key, db: &Db) -> std::io::Result<()> {
+    fn remove(key: &Self::Key, db: &Db) -> Result<()> {
         Self::remove_from_u8_array(&key.as_bytes(), db)
     }
 
     #[doc(hidden)]
-    fn remove_from_u8_array(key: &[u8], db: &Db) -> std::io::Result<()> {
+    fn remove_from_u8_array(key: &[u8], db: &Db) -> Result<()> {
         Self::pre_remove(key, db)?;
         Self::get_tree(db)?.remove(key)?;
         Ok(())
     }
 
     #[doc(hidden)]
-    fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
+    fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> Result<()> {
         Self::remove_prefixed_in_tree(Self::store_name(), &prefix.as_bytes(), db)
     }
 
     #[doc(hidden)]
-    fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> std::io::Result<()> {
+    fn remove_prefixed_in_tree(tree_name: &str, prefix: &[u8], db: &Db) -> Result<()> {
         let tree = db.open_tree(tree_name)?;
         let mut batch = Batch::default();
         tree.scan_prefix(prefix).for_each(|elem| {
@@ -527,7 +524,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// MyStruct::remove(&3, &db);
     /// ```
-    fn filter_remove<F: Fn(&Self) -> bool>(f: F, db: &Db) -> std::io::Result<Vec<Self>> {
+    fn filter_remove<F: Fn(&Self) -> bool>(f: F, db: &Db) -> Result<Vec<Self>> {
         let mut res = Self::get_with_filter(f, db)?;
         let mut to_remove_from_result = Vec::new();
         for (index,entity) in res.iter().enumerate() {
@@ -548,18 +545,17 @@ pub trait Entity: Serialize + DeserializeOwned {
     ///     /* */
     /// }
     /// ```
-    fn exists(key: &Self::Key, db: &Db) -> std::io::Result<bool> {
-        Self::get_tree(db)?
-            .contains_key(&key.as_bytes())
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+    fn exists(key: &Self::Key, db: &Db) -> Result<bool> {
+        Ok(Self::get_tree(db)?
+            .contains_key(&key.as_bytes())?)
     }
 
     /// Exports the entire store for this entity as a JSON file.
     /// This can be used for saving purposes.
-    fn export_json(f: File, db: &Db) -> std::io::Result<()> {
+    fn export_json(f: File, db: &Db) -> Result<()> {
         let all = Self::get_all(db)?;
-        serde_json::to_writer(f, &all)
-            .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not serialize objects"))
+        serde_json::to_writer(f, &all)?;
+        Ok(())
     }
 
     /// Imports the entire store for this entity as a JSON file.
@@ -568,9 +564,8 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// This can be used for restoring purposes.
     /// 
     /// ⚠ If the structure of the JSON file does not match the Structs used in the app, this will fail with an error.
-    fn import_json(f: File, db: &Db) -> std::io::Result<()> {
-        let all: Vec<Self> = serde_json::from_reader(f)
-            .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not deserialize objects"))?;
+    fn import_json(f: File, db: &Db) -> Result<()> {
+        let all: Vec<Self> = serde_json::from_reader(f)?;
         for each in all {
             each.save(db)?;
         }
@@ -588,19 +583,19 @@ pub trait Entity: Serialize + DeserializeOwned {
         self_to_other: DeletionBehaviour,
         other_to_self: DeletionBehaviour,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         Relation::create(self, other, self_to_other, other_to_self, db)
     }
 
     /// Breaks an existing link between two entities.
     /// 
     /// This will remove the relation in both ways.
-    fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> std::io::Result<()> {
+    fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> Result<()> {
         Relation::remove(self, other, db)
     }
 
     #[doc(hidden)]
-    fn remove_relation_with_key<E: Entity>(&self, other: &[u8], db: &Db) -> std::io::Result<()> {
+    fn remove_relation_with_key<E: Entity>(&self, other: &[u8], db: &Db) -> Result<()> {
         Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), other, db)
     }
 
@@ -611,7 +606,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let related_struct2s = m_struct_1.get_related::<MyStruct2>(&db)?;
     /// ```
-    fn get_related<E: Entity>(&self, db: &Db) -> std::io::Result<Vec<E>> {
+    fn get_related<E: Entity>(&self, db: &Db) -> Result<Vec<E>> {
         Relation::get::<Self, E>(self, db)
     }
 
@@ -622,7 +617,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_single_related::<MyStruct2>(&db)?;
     /// ```
-    fn get_single_related<E: Entity>(&self, db: &Db) -> std::io::Result<E> {
+    fn get_single_related<E: Entity>(&self, db: &Db) -> Result<E> {
         Relation::get_one::<Self, E>(self, db)
     }
 
@@ -642,7 +637,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         &self,
         sibling: &mut E,
         db: &Db,
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         sibling.set_key(self.get_key());
         sibling.save(db)
     }
@@ -654,7 +649,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_sibling::<MyStruct2>(&db)?;
     /// ```
-    fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> std::io::Result<Option<E>> {
+    fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> Result<Option<E>> {
         E::get(&self.get_key(), db)
     }
 
@@ -674,7 +669,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         &self,
         child: &mut E,
         db: &Db,
-    ) -> std::io::Result<E::Key> {
+    ) -> Result<E::Key> {
         let increment = match E::get_tree(db)?.last()? {
             Some((key, _)) => {
                 let u32_part = key
@@ -701,7 +696,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let children = m_struct_1.get_children::<MyStruct2>(&db)?;
     /// ```
-    fn get_children<E: Entity<Key = (Self::Key, u32)>>(&self, db: &Db) -> std::io::Result<Vec<E>> {
+    fn get_children<E: Entity<Key = (Self::Key, u32)>>(&self, db: &Db) -> Result<Vec<E>> {
         E::get_with_prefix(self.get_key(), db)
     }
 }
@@ -714,7 +709,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 pub trait AutoIncrementEntity: Entity<Key = u32> {
 
     /// Returns a new key that is currently not used in the store
-    fn get_next_key(db: &Db) -> std::io::Result<u32>;
+    fn get_next_key(db: &Db) -> Result<u32>;
 
     /// Saves the entity to the database after having modified its key to an auto-incremented one.
     /// ### Example
@@ -725,21 +720,21 @@ pub trait AutoIncrementEntity: Entity<Key = u32> {
     /// m_struct_2.save_next(&db)?; // creates a new entry with key 1, and so on
     /// // m_struct2.key is now 1
     /// ```
-    fn save_next(&mut self, db: &Db) -> std::io::Result<u32>;
+    fn save_next(&mut self, db: &Db) -> Result<u32>;
 }
 
 impl<T> AutoIncrementEntity for T
 where
     T: Entity<Key = u32>,
 {
-    fn get_next_key(db: &Db) -> std::io::Result<u32> {
+    fn get_next_key(db: &Db) -> Result<u32> {
         match Self::get_tree(db)?.last()? {
             Some((key, _)) => Ok(u32::from_be_bytes(key.as_ref().try_into().unwrap()) + 1),
             None => Ok(Default::default()),
         }
     }
 
-    fn save_next(&mut self, db: &Db) -> std::io::Result<u32> {
+    fn save_next(&mut self, db: &Db) -> Result<u32> {
         let next_key = Self::get_next_key(db)?;
         self.set_key(&next_key);
         self.save(db)?;
