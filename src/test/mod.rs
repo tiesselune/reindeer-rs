@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 
 fn get_random_name() -> String {
-    format!("sled-entity-test-{}",Uuid::new_v4().to_string())
+    format!("sled-entity-test-{}",Uuid::new_v4())
 }
 #[test]
 fn create_and_register() -> Result<(), std::io::Error> {

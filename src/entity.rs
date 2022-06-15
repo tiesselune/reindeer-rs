@@ -325,7 +325,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     ) -> std::io::Result<E::Key> {
         let increment = match E::get_tree(db)?.last()? {
             Some((key, _)) => {
-                let u32_part = key.iter().rev().take(size_of::<u32>()).rev().map(|e| *e).collect::<Vec<u8>>();
+                let u32_part = key.iter().rev().take(size_of::<u32>()).rev().copied().collect::<Vec<u8>>();
                 u32::from_be_bytes(u32_part.try_into().unwrap()) + 1
             }
             None => Default::default(),
