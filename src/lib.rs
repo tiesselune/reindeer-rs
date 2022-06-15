@@ -40,7 +40,12 @@ pub use entity::AutoIncrementEntity;
 pub use entity::Entity;
 pub use relation::DeletionBehaviour;
 pub use serde_derive::{Deserialize, Serialize};
+
+/// Opens a `sled` database to store Entities. The resulting Db object can be copied accross threads. This is a re-export of `sled::open`.
+/// 
 pub use sled::open;
+/// `sled` database struct. It can be copied and used accross threads and is a central item to store entities. This is a re-export of `sled::Db`.
+/// 
 pub use sled::Db;
 pub use error::{Error,ErrorKind,Result};
 
