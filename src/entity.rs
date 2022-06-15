@@ -8,9 +8,9 @@ use std::convert::TryInto;
 /// The `Entity` trait provides document store capabilities for any struct that implements it.
 pub trait Entity: Serialize + DeserializeOwned {
     /// The type of the Key for this document store.
-    /// 
+    ///
     /// It needs to implement the [`AsBytes`](entity/trait.AsBytes.html) trait
-    /// which is already implemented for 
+    /// which is already implemented for
     ///  - `String`
     ///  - `u32`
     ///  - `u64`
@@ -18,9 +18,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     ///  - `i64`
     type Key: AsBytes + Clone;
 
-    /// The name of the store, as a string. 
+    /// The name of the store, as a string.
     /// It represents a keyspace in the database. It needs to be unique for the struct that implements it.
-    /// 
+    ///
     /// A recommendation is to return the name of the struct in `snake_case`.
     /// ### Example
     /// ```rs
@@ -32,9 +32,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     fn store_name() -> &'static str;
 
-    /// A function that returns a reference to the key for this struct. 
-    /// 
-    /// 
+    /// A function that returns a reference to the key for this struct.
+    ///
+    ///
     /// ### Example
     /// ```rs
     /// impl Entity for MyStruct {
@@ -48,6 +48,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
+
     fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
@@ -348,7 +349,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         sibling: &mut E,
         db: &Db,
     ) -> std::io::Result<()> {
-        sibling.set_key(&self.get_key());
+        sibling.set_key(self.get_key());
         sibling.save(db)
     }
 
