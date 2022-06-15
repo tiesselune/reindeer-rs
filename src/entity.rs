@@ -33,7 +33,7 @@ use std::convert::TryInto;
 /// ```
 /// 
 /// ```rust
-/// let db = open("my-db")?;
+/// let db = open("./my-db")?;
 /// let my_struct = MyStruct { key : 2 , prop1 : String::from("Hello, World!")};
 /// my_struct.save(&db)?;
 /// ```

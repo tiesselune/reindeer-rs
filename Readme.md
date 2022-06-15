@@ -70,7 +70,7 @@ impl Entity for MyStruct{
 Register the entity once, when you launch your application.
 
 ```rust
-let db = reindeer::open("./")?;
+let db = reindeer::open("./my-db")?;
 ```
 ```rust
 MyStruct::register(db)?;
