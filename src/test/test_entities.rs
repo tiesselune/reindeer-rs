@@ -19,12 +19,12 @@ pub struct Entity2 {
 
 #[derive(Serialize, Deserialize)]
 pub struct Entity3 {
-    id: u32,
+    pub id: u32,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Entity4 {
-    id: u32,
+    pub id: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -91,7 +91,7 @@ impl Entity for Entity3 {
         self.id = *key;
     }
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
-        vec![("entity_3",DeletionBehaviour::Error)]
+        vec![("entity_1",DeletionBehaviour::Error)]
     }
     fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         vec![("child_entity_2",DeletionBehaviour::Error)]

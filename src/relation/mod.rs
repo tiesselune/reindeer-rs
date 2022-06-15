@@ -90,6 +90,9 @@ impl Relation {
             for (key,deletion_behaviour) in entities {
                 match deletion_behaviour {
                     &DeletionBehaviour::Error => {
+                        if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k == key) {
+                            continue;
+                        }
                         return Err(std::io::Error::new(
                             std::io::ErrorKind::PermissionDenied,
                             format!("Constrained related entity exists in {}", other_tree_name),
@@ -109,9 +112,13 @@ impl Relation {
             return Err(std::io::Error::new(std::io::ErrorKind::Other,format!("Trying to use unregistered entity {}",tree_name)));
         }
         let family_descriptor = family_descriptor.unwrap();
-        for (other_tree_name, behaviour) in family_descriptor.sibling_trees {
+        for (other_tree_name, behaviour) in &family_descriptor.sibling_trees {
+            println!("name : {}, descriptor : {:?}", other_tree_name, behaviour);
             match behaviour {
                 DeletionBehaviour::Error =>  {
+                    if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k == e1) {
+                        continue;
+                    }
                     let tree = db.open_tree(&other_tree_name)?;
                     if tree.contains_key(e1)? {
                         return Err(std::io::Error::new(
@@ -300,7 +307,7 @@ impl Relation {
     }
 }
 
-#[derive(PartialEq, Eq, Serialize, Deserialize, Clone, Copy)]
+#[derive(PartialEq, Eq, Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum DeletionBehaviour {
     Error,
     BreakLink,

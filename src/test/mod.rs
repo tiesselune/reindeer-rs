@@ -1,7 +1,7 @@
 mod test_entities;
 
 use test_entities::{Entity1,Entity2,Entity3,Entity4,ChildEntity1,ChildEntity2,set_up,set_up_content,tear_down};
-use crate::{open, relation::FamilyDescriptor, Entity};
+use crate::{open, relation::FamilyDescriptor, Entity,AutoIncrementEntity};
 use uuid::Uuid;
 
 #[test]
@@ -91,3 +91,38 @@ fn test_delete_children_error() -> Result<(), std::io::Error> {
     tear_down(&name)?;
     Ok(())
 }
+
+#[test]
+fn test_add_sibling() -> Result<(), std::io::Error> {
+    let name = Uuid::new_v4().to_string();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let mut e3 = Entity3 { id : 0 };
+    e1.save_sibling(&mut e3, &db)?;
+    assert_eq!(e3.id,e1.id);
+    assert_eq!(e3.id,3);
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_delete_sibling_cascade() -> Result<(), std::io::Error> {
+    let name = Uuid::new_v4().to_string();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let mut e3 = Entity3 { id : 0 };
+    e1.save_sibling(&mut e3, &db)?;
+    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
+    assert!(Entity1::get(&e1.get_key(),&db)?.is_none());
+    assert!(Entity3::get(&e3.get_key(),&db)?.is_none());
+    tear_down(&name)?;
+    Ok(())
+}
+
+// TODO : test sibling
+// TODO : Test free relations
+// TODO : Test reccursive scenarios
