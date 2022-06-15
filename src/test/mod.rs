@@ -1,12 +1,16 @@
 mod test_entities;
 
-use test_entities::{Entity1,Entity2,Entity3,Entity4,ChildEntity1,ChildEntity2,set_up,set_up_content,tear_down};
-use crate::{open, relation::FamilyDescriptor, Entity,AutoIncrementEntity};
+use test_entities::{Entity1,Entity2,Entity3,ChildEntity1,ChildEntity2,set_up,set_up_content,tear_down};
+use crate::{open, relation::FamilyDescriptor, Entity,AutoIncrementEntity, DeletionBehaviour};
 use uuid::Uuid;
 
+
+fn get_random_name() -> String {
+    format!("sled-entity-test-{}",Uuid::new_v4().to_string())
+}
 #[test]
 fn create_and_register() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     assert!(FamilyDescriptor::exists(&String::from("entity_1"), &db)?);
     assert!(FamilyDescriptor::exists(&String::from("entity_2"), &db)?);
@@ -20,7 +24,7 @@ fn create_and_register() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_save_save_next_and_get() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let e1_0 = Entity1::get(&0,&db)?;
@@ -48,7 +52,7 @@ fn test_save_save_next_and_get() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_save_and_get_children() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let child_1 = ChildEntity1::get(&(String::from("id3"),0), &db)?;
@@ -63,7 +67,7 @@ fn test_save_and_get_children() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_cascade_children() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
@@ -78,7 +82,7 @@ fn test_cascade_children() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_delete_children_error() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let e3_2 = Entity3::get(&2,&db)?.unwrap();
@@ -94,7 +98,7 @@ fn test_delete_children_error() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_add_sibling() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
@@ -109,7 +113,7 @@ fn test_add_sibling() -> Result<(), std::io::Error> {
 
 #[test]
 fn test_delete_sibling_cascade() -> Result<(), std::io::Error> {
-    let name = Uuid::new_v4().to_string();
+    let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
     let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
@@ -123,6 +127,116 @@ fn test_delete_sibling_cascade() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-// TODO : test sibling
-// TODO : Test free relations
-// TODO : Test reccursive scenarios
+
+#[test]
+fn test_delete_sibling_error() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let mut e3 = Entity3 { id : 0 };
+    e1.save_sibling(&mut e3, &db)?;
+    assert!(Entity3::remove(&e1.get_key(), &db).is_err());
+    assert!(Entity1::get(&e1.get_key(),&db)?.is_some());
+    assert!(Entity3::get(&e3.get_key(),&db)?.is_some());
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_free_relation() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let e1 = Entity1::get(&2,&db)?.unwrap();
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_2 = Entity2::get(&String::from("id2"),&db)?.unwrap();
+    assert!(e1.create_relation(&e2_1, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    assert!(e1.create_relation(&e2_2, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    let related = e1.get_related::<Entity2>(&db)?;
+    assert_eq!(related.len(),2);
+    assert_eq!(related[0].get_key(),"id1");
+    assert_eq!(related[1].get_key(),"id2");
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_free_relation_cascade() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_2 = Entity2::get(&String::from("id2"),&db)?.unwrap();
+    assert!(e1.create_relation(&e2_1, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    assert!(e1.create_relation(&e2_2, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    let related = e1.get_related::<Entity2>(&db)?;
+    assert_eq!(related.len(),2);
+    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
+    assert_eq!(e1.get_related::<Entity2>(&db)?.len(),0);
+    assert!(Entity2::get(&String::from("id1"),&db)?.is_none());
+    assert!(Entity2::get(&String::from("id2"),&db)?.is_none());
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_free_relation_error() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_2 = Entity2::get(&String::from("id2"),&db)?.unwrap();
+    assert!(e1.create_relation(&e2_1, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    assert!(e1.create_relation(&e2_2, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    let related = e1.get_related::<Entity2>(&db)?;
+    assert_eq!(related.len(),2);
+    assert!(Entity2::remove(&e2_1.get_key(), &db).is_err());
+    assert_eq!(e1.get_related::<Entity2>(&db)?.len(),2);
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_recursive_cascade() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let mut e1 = Entity1 { id : 0, prop1 : String::from("First Sibling")};
+    e1.save_next(&db)?;
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
+    assert!(e1.create_relation(&e2_1, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    assert!(e1.create_relation(&e2_3, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    let related = e1.get_related::<Entity2>(&db)?;
+    assert_eq!(related.len(),2);
+    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
+    assert_eq!(e1.get_related::<Entity2>(&db)?.len(),0);
+    assert_eq!(ChildEntity1::get_number(&db)?,0);
+    tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_recursive_error() -> Result<(), std::io::Error> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let e1 = Entity1::get(&2,&db)?.unwrap();
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
+    assert!(e1.create_relation(&e2_1, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    assert!(e1.create_relation(&e2_3, DeletionBehaviour::Cascade, DeletionBehaviour::Error, &db).is_ok());
+    let related = e1.get_related::<Entity2>(&db)?;
+    assert_eq!(related.len(),2);
+    assert!(Entity1::remove(&e1.get_key(), &db).is_err());
+    assert_eq!(e1.get_related::<Entity2>(&db)?.len(),2);
+    assert_eq!(ChildEntity1::get_number(&db)?,3);
+    tear_down(&name)?;
+    Ok(())
+}

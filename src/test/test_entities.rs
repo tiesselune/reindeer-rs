@@ -23,11 +23,6 @@ pub struct Entity3 {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Entity4 {
-    pub id: u32,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct ChildEntity1 {
     id: (String, u32),
 }
@@ -98,22 +93,6 @@ impl Entity for Entity3 {
     }
 }
 
-impl Entity for Entity4 {
-    type Key = u32;
-
-    fn tree_name() -> &'static str {
-        "entity_4"
-    }
-
-    fn get_key(&self) -> Self::Key {
-        self.id
-    }
-
-    fn set_key(&mut self, key: &Self::Key) {
-        self.id = *key
-    }
-}
-
 impl Entity for ChildEntity1 {
     type Key = (String, u32);
 
@@ -154,7 +133,6 @@ pub fn set_up(name : &str) -> std::io::Result<Db> {
     Entity1::register(&db)?;
     Entity2::register(&db)?;
     Entity3::register(&db)?;
-    Entity4::register(&db)?;
     ChildEntity1::register(&db)?;
     ChildEntity2::register(&db)?;
     Ok(db)
@@ -179,18 +157,14 @@ pub fn set_up_content(db : &Db) -> std::io::Result<()> {
     e3.save_next(db)?;
     e3.save_next(db)?;
     e3.save_next(db)?;
-    let mut e4 = Entity4 { id : 0};
-    e4.save_next(db)?;
-    e4.save_next(db)?;
-    e4.save_next(db)?;
-    let mut e5 = ChildEntity1 { id : (String::from("id0"),0)};
-    e2.save_child(&mut e5, db)?;
-    e2.save_child(&mut e5, db)?;
-    e2.save_child(&mut e5, db)?;
-    let mut e6 = ChildEntity2 { id : (0,0)};
-    e3.save_child(&mut e6, db)?;
-    e3.save_child(&mut e6, db)?;
-    e3.save_child(&mut e6, db)?;
+    let mut e4 = ChildEntity1 { id : (String::from("id0"),0)};
+    e2.save_child(&mut e4, db)?;
+    e2.save_child(&mut e4, db)?;
+    e2.save_child(&mut e4, db)?;
+    let mut e5 = ChildEntity2 { id : (0,0)};
+    e3.save_child(&mut e5, db)?;
+    e3.save_child(&mut e5, db)?;
+    e3.save_child(&mut e5, db)?;
     Ok(())
 }
 

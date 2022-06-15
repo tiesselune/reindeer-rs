@@ -90,7 +90,7 @@ impl Relation {
             for (key,deletion_behaviour) in entities {
                 match deletion_behaviour {
                     &DeletionBehaviour::Error => {
-                        if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k == key) {
+                        if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k.as_bytes() == key.as_bytes()) {
                             continue;
                         }
                         return Err(std::io::Error::new(
@@ -113,7 +113,6 @@ impl Relation {
         }
         let family_descriptor = family_descriptor.unwrap();
         for (other_tree_name, behaviour) in &family_descriptor.sibling_trees {
-            println!("name : {}, descriptor : {:?}", other_tree_name, behaviour);
             match behaviour {
                 DeletionBehaviour::Error =>  {
                     if already_checked.iter().any(|(tn,k)| tn == other_tree_name && k == e1) {
@@ -182,10 +181,7 @@ impl Relation {
                 db,
             ))
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "No related entities were found.",
-            ))
+            Ok(Vec::new())
         }
     }
 
