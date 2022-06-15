@@ -5,7 +5,7 @@
 //!
 //! *`reindeer` 🦌 lifts your `sled`!*
 //!
-//! It relies on a trait, `Entity`, to provide basic document store capabilities to any `serde`-serializable struct that implements it.  
+//! It relies on a trait, [`Entity`](entity/trait.Entity.html), to provide basic document store capabilities to any `serde`-serializable struct that implements it.  
 //!
 //! To use `reindeer`, add a key to identify any instance individually to your struct and implement the [`store_name`](entity/trait.Entity.html#method.store_name),
 //! [`get_key`](entity/trait.Entity.html#method.get_key) and [`set_key`](entity/trait.Entity.html#method.set_key) methods to implement
@@ -34,7 +34,7 @@
 //!  - `DeletionBehaviour::BreakLink` : Remove this entity and the links with its related entites, leaving the other ones untouched
 
 pub mod entity;
-pub mod relation;
+mod relation;
 pub use entity::AutoIncrementEntity;
 pub use entity::Entity;
 pub use relation::DeletionBehaviour;

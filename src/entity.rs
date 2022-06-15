@@ -707,7 +707,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 }
 
 /// `AutoIncrementEntity` is a trait aimed to automatically be 
-/// implemented on Entities that have `u32 as their key type.
+/// implemented on Entities that have `u32` as their `Key` type.
 /// 
 /// It provides the `save_next()` method that updates the key of the entity 
 /// with a new, incremented one before saving it to the database.
