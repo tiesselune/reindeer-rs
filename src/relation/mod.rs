@@ -35,13 +35,13 @@ impl Relation {
                 Self::remove_link_with_keys_and_tree_names(
                     &tree_name,
                     &referer.0,
-                    E1::tree_name(),
+                    E1::store_name(),
                     key,
                     db,
                 )?;
             }
         }
-        let tree = db.open_tree(Relation::tree_name(E1::tree_name()))?;
+        let tree = db.open_tree(Relation::tree_name(E1::store_name()))?;
         tree.remove(key)?;
         Ok(())
     }
@@ -221,7 +221,7 @@ impl Relation {
 
     pub fn get<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<Vec<E2>> {
         let referers = Relation::relations(e1, db)?;
-        if let Some(related_keys) = referers.related_entities.get(E2::tree_name()) {
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             Ok(E2::get_each_u8(
                 (related_keys
                     .iter()
@@ -237,7 +237,7 @@ impl Relation {
 
     pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> std::io::Result<E2> {
         let referers = Relation::relations(e1, db)?;
-        if let Some(related_keys) = referers.related_entities.get(E2::tree_name()) {
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             if !related_keys.is_empty() {
                 if let Some(e) = E2::get_from_u8_array(&related_keys[0].0, db)? {
                     return Ok(e);
@@ -272,7 +272,7 @@ impl Relation {
         e: &[u8],
         db: &Db,
     ) -> std::io::Result<RelationDescriptor> {
-        Self::get_descriptor_with_key_and_tree_name(E::tree_name(), e, db)
+        Self::get_descriptor_with_key_and_tree_name(E::store_name(), e, db)
     }
 
     fn get_descriptor<E: Entity>(e: &E, db: &Db) -> std::io::Result<RelationDescriptor> {
@@ -284,7 +284,7 @@ impl Relation {
         r_d: &RelationDescriptor,
         db: &Db,
     ) -> std::io::Result<()> {
-        let tree = db.open_tree(Relation::tree_name(E::tree_name()))?;
+        let tree = db.open_tree(Relation::tree_name(E::store_name()))?;
         tree.insert(e, bincode::serialize(r_d).unwrap())?;
         Ok(())
     }

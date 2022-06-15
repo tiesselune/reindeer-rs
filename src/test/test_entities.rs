@@ -35,7 +35,7 @@ pub struct ChildEntity2 {
 impl Entity for Entity1 {
     type Key = u32;
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "entity_1"
     }
 
@@ -54,7 +54,7 @@ impl Entity for Entity1 {
 impl Entity for Entity2 {
     type Key = String;
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "entity_2"
     }
 
@@ -74,7 +74,7 @@ impl Entity for Entity2 {
 impl Entity for Entity3 {
     type Key = u32;
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "entity_3"
     }
 
@@ -96,7 +96,7 @@ impl Entity for Entity3 {
 impl Entity for ChildEntity1 {
     type Key = (String, u32);
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "child_entity_1"
     }
 
@@ -112,7 +112,7 @@ impl Entity for ChildEntity1 {
 impl Entity for ChildEntity2 {
     type Key = (u32, u32);
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "child_entity_2"
     }
 

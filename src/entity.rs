@@ -8,7 +8,7 @@ use std::convert::TryInto;
 pub trait Entity: Serialize + DeserializeOwned {
     type Key: AsBytes;
 
-    fn tree_name() -> &'static str;
+    fn store_name() -> &'static str;
     fn get_key(&self) -> Self::Key;
     fn set_key(&mut self, key: &Self::Key);
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
@@ -21,7 +21,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn register(db: &Db) -> std::io::Result<()> {
         //TODO move in store ?
         let desc = FamilyDescriptor {
-            tree_name: String::from(Self::tree_name()),
+            tree_name: String::from(Self::store_name()),
             child_trees: Self::get_child_trees()
                 .iter()
                 .map(|e| (String::from(e.0), e.1))
@@ -35,7 +35,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
-        db.open_tree(Self::tree_name())
+        db.open_tree(Self::store_name())
             .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not open tree"))
     }
 
@@ -188,7 +188,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     #[doc(hidden)]
     fn pre_remove(key: &[u8], db: &Db) -> std::io::Result<()> {
         let mut to_be_removed = RelationDescriptor::default();
-        Relation::can_be_deleted(Self::tree_name(), key, &Vec::new(), &mut to_be_removed, db)?;
+        Relation::can_be_deleted(Self::store_name(), key, &Vec::new(), &mut to_be_removed, db)?;
         for (tree, keys) in &to_be_removed.related_entities {
             let tree = db.open_tree(tree)?;
             let mut batch = Batch::default();
@@ -201,7 +201,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     fn can_be_removed(key: &[u8], db: &Db) -> std::io::Result<()> {
         Relation::can_be_deleted(
-            Self::tree_name(),
+            Self::store_name(),
             key,
             &Vec::new(),
             &mut RelationDescriptor::default(),
@@ -222,7 +222,7 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     #[doc(hidden)]
     fn remove_prefixed(prefix: impl AsBytes, db: &Db) -> std::io::Result<()> {
-        Self::remove_prefixed_in_tree(Self::tree_name(), &prefix.as_bytes(), db)
+        Self::remove_prefixed_in_tree(Self::store_name(), &prefix.as_bytes(), db)
     }
 
     #[doc(hidden)]

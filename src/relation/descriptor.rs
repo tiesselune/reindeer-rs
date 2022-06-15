@@ -26,7 +26,7 @@ pub struct FamilyDescriptor {
 impl RelationDescriptor {
     pub fn add_related<E: Entity>(&mut self, e: &E, behaviour: DeletionBehaviour) {
         let key = e.get_key().as_bytes();
-        self.add_related_by_key(E::tree_name(), &key, behaviour);
+        self.add_related_by_key(E::store_name(), &key, behaviour);
     }
 
     pub fn add_related_by_key(
@@ -44,7 +44,7 @@ impl RelationDescriptor {
     }
 
     pub fn remove_related_by_key<E: Entity>(&mut self, e: &[u8]) {
-        self.remove_related_by_key_and_tree_name(E::tree_name(), e)
+        self.remove_related_by_key_and_tree_name(E::store_name(), e)
     }
 
     pub fn remove_related_by_key_and_tree_name(&mut self, tree: &str, e: &[u8]) {
@@ -66,7 +66,7 @@ impl RelationDescriptor {
 impl Entity for FamilyDescriptor {
     type Key = String;
 
-    fn tree_name() -> &'static str {
+    fn store_name() -> &'static str {
         "__$family_rel"
     }
 
