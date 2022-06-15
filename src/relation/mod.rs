@@ -353,9 +353,13 @@ impl Relation {
     }
 }
 
+/// Enum for use in relation description, defining how the database must behave if one end of the relation is removed.
 #[derive(PartialEq, Eq, Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum DeletionBehaviour {
+    /// Trying to remove the current entity while a related one still exists will result in an error
     Error,
+    /// Related entities are left untouched, but the link between the two entities is removed
     BreakLink,
+    /// Related entities are also removed if the current one is removed
     Cascade,
 }
