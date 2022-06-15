@@ -16,7 +16,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     ///  - `u64`
     ///  - `i32`
     ///  - `i64`
-    type Key: AsBytes;
+    type Key: AsBytes + Clone;
 
     /// The name of the store, as a string. 
     /// It represents a keyspace in the database. It needs to be unique for the struct that implements it.
@@ -32,18 +32,18 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     fn store_name() -> &'static str;
 
-    /// A function that returns an owned version of the key. 
+    /// A function that returns a reference to the key for this struct. 
     /// 
     /// 
     /// ### Example
     /// ```rs
     /// impl Entity for MyStruct {
-    ///     fn get_key(&self) -> Self::Key {
-    ///         self.key.clone()
+    ///     fn get_key(&self) -> &Self::Key {
+    ///         &self.key
     ///     }
     /// }
     /// ```
-    fn get_key(&self) -> Self::Key;
+    fn get_key(&self) -> &Self::Key;
     fn set_key(&mut self, key: &Self::Key);
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
@@ -95,7 +95,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             .map(|vec| Self::from_ivec(vec)))
     }
 
-    fn get_with_prefix(key: impl AsBytes, db: &Db) -> std::io::Result<Vec<Self>> {
+    fn get_with_prefix(key: &impl AsBytes, db: &Db) -> std::io::Result<Vec<Self>> {
         Ok(Self::get_tree(db)?
             .scan_prefix(key.as_bytes())
             .map(|elem| Self::from_ivec(elem.unwrap().1))
@@ -374,7 +374,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             }
             None => Default::default(),
         };
-        let key = (self.get_key(), increment);
+        let key = (self.get_key().clone(), increment);
         child.set_key(&key);
         child.save(db)?;
         Ok(key)

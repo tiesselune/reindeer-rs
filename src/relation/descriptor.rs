@@ -70,8 +70,8 @@ impl Entity for FamilyDescriptor {
         "__$family_rel"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.tree_name.clone()
+    fn get_key(&self) -> &Self::Key {
+        &self.tree_name
     }
 
     fn set_key(&mut self, key: &Self::Key) {

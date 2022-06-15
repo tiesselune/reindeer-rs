@@ -39,8 +39,8 @@ impl Entity for Entity1 {
         "entity_1"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.id
+    fn get_key(&self) -> &Self::Key {
+        &self.id
     }
 
     fn set_key(&mut self, key: &Self::Key) {
@@ -58,8 +58,8 @@ impl Entity for Entity2 {
         "entity_2"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.id.clone()
+    fn get_key(&self) -> &Self::Key {
+        &self.id
     }
 
     fn set_key(&mut self, key: &Self::Key) {
@@ -78,8 +78,8 @@ impl Entity for Entity3 {
         "entity_3"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.id
+    fn get_key(&self) -> &Self::Key {
+        &self.id
     }
 
     fn set_key(&mut self, key: &Self::Key) {
@@ -100,8 +100,8 @@ impl Entity for ChildEntity1 {
         "child_entity_1"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.id.clone()
+    fn get_key(&self) -> &Self::Key {
+        &self.id
     }
 
     fn set_key(&mut self, key: &Self::Key) {
@@ -116,8 +116,8 @@ impl Entity for ChildEntity2 {
         "child_entity_2"
     }
 
-    fn get_key(&self) -> Self::Key {
-        self.id
+    fn get_key(&self) -> &Self::Key {
+        &self.id
     }
 
     fn set_key(&mut self, key: &Self::Key) {
