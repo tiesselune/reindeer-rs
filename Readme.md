@@ -12,11 +12,11 @@ It serves as a convenient middle ground to store, retreive and update structs in
 
 ### Create a `sled` database
 
-```rs
+```rust
 use reindeer::Db;
 ```
 
-```rs
+```rust
 let db = reindeer::open("./")?;
 ```
 
@@ -26,7 +26,7 @@ let db = reindeer::open("./")?;
 
 Entities need to implement the `Serialize` and `Deserialize` traits from `serde`, which are conveniently re-exported from `reindeer`:
 
-```rs
+```rust
 use reindeer::{Serialize,Deserialize,Entity}
 
 #[derive(Serialize,Deserialize)]
@@ -45,29 +45,34 @@ Then you need to implement the `Entity` trait and implement three methods : `get
  - The key represents the unique key that will be used to identify each instance of your struct in the database, to retreive and update them, it is of type `Key`
  - The `store_name` is the name of the entity store. It should be unique for each Entity type (see it as the table name).
 
-```rs
+```rust
+use reindeer::{Entity, Serialize,Deserialize};
+
+#[derive(Serialize,Deserialize)]
+struct MyStruct  { key : u32, prop1 : String }
+
 impl Entity for MyStruct{
     type Key = u32;
     fn store_name() -> &'static str {
         "my-struct"
     }
-    fn get_key(&self) -> Self::Key {
-        self.id
+    fn get_key(&self) -> &Self::Key {
+        &self.key
     }
-    fn set_key(&mut self, key : Self::Key) {
-        self.id = key;
+    fn set_key(&mut self, key : &Self::Key) {
+        self.key = key.clone();
     }
-}
+ }
 ```
 
 ### Register your entity with the system
 
 Register the entity once, when you launch your application.
 
-```rs
+```rust
 let db = reindeer::open("./")?;
 ```
-```rs
+```rust
 MyStruct::register(db)?;
 ```
 
@@ -76,10 +81,10 @@ MyStruct::register(db)?;
 ### Save an instance to the database
 
 You can now save an instance of your struct `MyStruct` to the database :
-```rs
+```rust
 let db = reindeer::open("./")?;
 ```
-```rs
+```rust
 let instance = MyStruct {
     id : 0,
     prop1 : String::from("Hello"),
@@ -92,13 +97,13 @@ instance.save(&db)?;
 
 ### Retreive an instance from the database
 
-```rs
+```rust
 let instance = MyStruct::get(0,&db)?;
 ```
 
 ### Retreive all instances
 
-```rs
+```rust
 let instances = MyStruct::get_all(&db)?;
 
 ```
@@ -106,13 +111,13 @@ let instances = MyStruct::get_all(&db)?;
 ### Get All entities respecting a condition
 
 
-```rs
+```rust
 let instances = MyStruct::get_with_filter(|m_struct| {mstruct.prop1.len > 20},&db)?;
 ```
 
 ### Delete an instance from the database
 
-```rs
+```rust
 MyStruct::remove(0,&db)?;
 ```
 
@@ -128,7 +133,7 @@ MyStruct::remove(0,&db)?;
 
 To create a sibling Entity, you need to link the Entity structs together by overriding the `get_sibling_trees()` method :
 
-```rs
+```rust
 use reindeer::{Entity,DeletionBehaviour};
 impl Entity for MyStruct1{
     /* ... */
@@ -165,7 +170,7 @@ In the above example, deleting a `MyStruct1` instance also deletes its sibling `
 
 #### Creating a sibling entity
 
-```rs
+```rust
 let m_struct_1 = MyStruct1 {
     /* ... */
 };
@@ -182,7 +187,7 @@ m_struct_1.save_sibling(m_struct_2,&db)?;
 
 #### Retrieving a sibling entity
 
-```rs
+```rust
 if let Some(sibling) = m_struct_1.get_sibling::<MyStruct2>(&db)? {
     /* ... */
 }
@@ -199,7 +204,7 @@ For a parent-child relationship between entities to exist, the child entity must
 :bulb: Children entities will be auto-incremeted and easily retreived through their parent key.
 
 
-```rs
+```rust
 impl Entity for Parent{
     type Key = String;
     /* ... */
@@ -225,7 +230,7 @@ In the above example, deleting the parent entity will remove all child entities 
 
 #### Adding a child entity
 
-```rs
+```rust
 let parent = Parent {
     /* ... */
 };
@@ -241,7 +246,7 @@ parent.save_child(child,&db)?;
 
 #### Getting Children
 
-```rs
+```rust
 let children = parent.get_children::<Child>(&db)?;
 ```
 
@@ -253,7 +258,7 @@ Free relations follow the same pattern as other relation types, except they are 
 
 #### Linking two entities 
 
-```rs
+```rust
 let e1 = Entity1 {
     /* ... */
 };
@@ -271,12 +276,12 @@ In the above example, deletion behaviour in both ways are provided : deleting `e
 
 #### Getting related entites from a given tree
 
-```rs
+```rust
 let related_entities = e1.get_related::<Entity2>(db)?;
 ```
 To get only the first related entity from the other tree, use 
 
-```rs
+```rust
 let related_entity = e1.get_single_related::<Entity2>(db)?;
 ```
 
@@ -284,11 +289,11 @@ let related_entity = e1.get_single_related::<Entity2>(db)?;
 
 If needed, you can remove an existing link between entities:
 
-```rs
+```rust
 e1.remove_relation(other,db)?;
 ```
 or
-```rs
+```rust
 e1.remove_relation_with_key::<OtherEntity>(otherKey,db)?;
 ```
 
@@ -310,7 +315,7 @@ Also, defining cascading relations will run through relations reccursively when 
 
 If your entity `Key` type is `u32`, you can auto-increment new entities using
 
-```rs
+```rust
 use reindeer::AutoIncrementEntity;
 let mut new_entity = Entity {
     id : 0 // if you setup id with any key, saving will update it
