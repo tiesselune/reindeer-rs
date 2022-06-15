@@ -9,8 +9,8 @@ use std::convert::TryInto;
 pub trait Entity: Serialize + DeserializeOwned {
     /// The type of the Key for this document store.
     ///
-    /// It needs to implement the [`AsBytes`](entity/trait.AsBytes.html) trait
-    /// which is already implemented for
+    /// It needs to implement the [`AsBytes`](entity/trait.AsBytes.html) and the Clone traits
+    /// which are already implemented for
     ///  - `String`
     ///  - `u32`
     ///  - `u64`
@@ -32,8 +32,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     fn store_name() -> &'static str;
 
-    /// A function that returns a reference to the key for this struct.
-    ///
+    /// A function that returns a reference to the key for this entity instance.
     ///
     /// ### Example
     /// ```rs
@@ -44,15 +43,88 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// }
     /// ```
     fn get_key(&self) -> &Self::Key;
+
+    /// A function that changes this entity instance's key to another key.
+    /// This is used on behalf of the user when using 
+    /// [`save_child`](entity/trait.Entity.html#method.save_child), 
+    /// [`save_sibling`](entity/trait.Entity.html#method.save_sibling) and 
+    /// [`save_next`](entity/trait.AutoIncrementEntity.html#tymethod.save_next)
+    ///
+    /// ### Example
+    /// ```rs
+    /// impl Entity for MyStruct {
+    ///     fn set_key(&mut self, key : &Self::Key) {
+    ///         self.key = key.clone();
+    ///     }
+    /// }
+    /// ```
     fn set_key(&mut self, key: &Self::Key);
+
+    /// A function that returns the list of sibling trees as well as the 
+    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use 
+    /// for the sibling counterparts of this instance if it is removed
+    /// 
+    /// Override it to create one or several sibling relationships.
+    /// 
+    /// ⚠ Note that you should also override it in the sibling entity implementations
+    /// with this one's `store_name` along with the `DeletionBehaviour`. It should
+    /// **not** bet set to `DeletionBehaviour::Error` to avoid creating a deadlock.
+    ///
+    /// ### Example
+    /// ```rs
+    /// impl Entity for MyStruct {
+    ///     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
+    ///         vec![
+    ///             ("sibling_struct_1",DeletionBehaviour::Cascade),
+    ///             ("sibling_struct_2",DeletionBehaviour::Error)
+    ///         ]
+    ///     }
+    /// }
+    /// ```
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
 
+    /// A function that returns the list of child trees as well as the 
+    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use 
+    /// for the child instances of this instance if it is removed
+    /// 
+    /// Override it to create one or several child relationships.
+    /// 
+    /// ⚠ Note that you should not use `DeletionBehaviour::BreakLink` here
+    /// for integrity's sake, but it remains possible.
+    /// 
+    /// Contrary to sibling relationships, nothing needs to be done in the child
+    /// Entity implementation
+    ///
+    /// ### Example
+    /// ```rs
+    /// impl Entity for MyStruct {
+    ///     fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
+    ///         vec![
+    ///             ("child_struct",DeletionBehaviour::Cascade),
+    ///         ]
+    ///     }
+    /// }
+    /// ```
     fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
         Vec::new()
     }
 
+    /// Call this function once the database is opened on each Entity that you want to use.
+    /// This is necessary to provide safe and type-agnostic deletion mechanisms.
+    /// 
+    /// ⚠ If this function is not called, deleting an entity of that type will result in an error.
+    /// 
+    /// ### Example
+    /// 
+    /// ```rs
+    /// impl Entity for MyStruct { /* ... */}
+    /// ```
+    /// 
+    /// ```rs
+    /// MyStruct::register(&db)?;
+    /// ```
     fn register(db: &Db) -> std::io::Result<()> {
         let desc = FamilyDescriptor {
             tree_name: String::from(Self::store_name()),
@@ -68,24 +140,28 @@ pub trait Entity: Serialize + DeserializeOwned {
         desc.save(db)
     }
 
+    #[doc(hidden)]
     fn get_tree(db: &Db) -> std::io::Result<Tree> {
         db.open_tree(Self::store_name())
             .map_err(|_| std::io::Error::new(ErrorKind::Other, "Could not open tree"))
     }
 
+    #[doc(hidden)]
     fn from_ivec(vec: IVec) -> Self {
         bincode::deserialize::<Self>(vec.as_ref()).unwrap()
     }
 
+    #[doc(hidden)]
     fn to_ivec(&self) -> IVec {
         IVec::from(bincode::serialize(self).unwrap())
     }
 
+    /// 
     fn get(key: &Self::Key, db: &Db) -> std::io::Result<Option<Self>> {
         Self::get_from_u8_array(&key.as_bytes(), db)
     }
 
-    fn get_number(db: &Db) -> std::io::Result<usize> {
+    fn get_count(db: &Db) -> std::io::Result<usize> {
         Ok(Self::get_tree(db)?.len())
     }
 

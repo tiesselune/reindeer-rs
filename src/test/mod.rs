@@ -293,7 +293,7 @@ fn test_recursive_cascade() -> Result<(), std::io::Error> {
     assert_eq!(related.len(), 2);
     assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 0);
-    assert_eq!(ChildEntity1::get_number(&db)?, 0);
+    assert_eq!(ChildEntity1::get_count(&db)?, 0);
     tear_down(&name)?;
     Ok(())
 }
@@ -326,7 +326,7 @@ fn test_recursive_error() -> Result<(), std::io::Error> {
     assert_eq!(related.len(), 2);
     assert!(Entity1::remove(&e1.get_key(), &db).is_err());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 2);
-    assert_eq!(ChildEntity1::get_number(&db)?, 3);
+    assert_eq!(ChildEntity1::get_count(&db)?, 3);
     tear_down(&name)?;
     Ok(())
 }
