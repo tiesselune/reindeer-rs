@@ -5,10 +5,44 @@ use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
 
+/// The `Entity` trait provides document store capabilities for any struct that implements it.
 pub trait Entity: Serialize + DeserializeOwned {
+    /// The type of the Key for this document store.
+    /// 
+    /// It needs to implement the [`AsBytes`](entity/trait.AsBytes.html) trait
+    /// which is already implemented for 
+    ///  - `String`
+    ///  - `u32`
+    ///  - `u64`
+    ///  - `i32`
+    ///  - `i64`
     type Key: AsBytes;
 
+    /// The name of the store, as a string. 
+    /// It represents a keyspace in the database. It needs to be unique for the struct that implements it.
+    /// 
+    /// A recommendation is to return the name of the struct in `snake_case`.
+    /// ### Example
+    /// ```rs
+    /// impl Entity for MyStruct {
+    ///     fn store_name() -> &'static str {
+    ///         "my_struct"
+    ///     }
+    /// }
+    /// ```
     fn store_name() -> &'static str;
+
+    /// A function that returns an owned version of the key. 
+    /// 
+    /// 
+    /// ### Example
+    /// ```rs
+    /// impl Entity for MyStruct {
+    ///     fn get_key(&self) -> Self::Key {
+    ///         self.key.clone()
+    ///     }
+    /// }
+    /// ```
     fn get_key(&self) -> Self::Key;
     fn set_key(&mut self, key: &Self::Key);
     fn get_sibling_trees() -> Vec<(&'static str, DeletionBehaviour)> {
@@ -19,7 +53,6 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     fn register(db: &Db) -> std::io::Result<()> {
-        //TODO move in store ?
         let desc = FamilyDescriptor {
             tree_name: String::from(Self::store_name()),
             child_trees: Self::get_child_trees()

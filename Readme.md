@@ -1,6 +1,6 @@
 # Reindeer 🦌
 
-Reindeer drives your `sled`!
+*Reindeer 🦌 lifts your `sled`!*
 
 ## A small structural layer on top of `sled`, `serde` and `bincode`
 
