@@ -701,8 +701,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// accordingly in the database.
     fn adopt_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
         E::remove(child.get_key(), db)?;
-        child.set_key(&(self.get_key().clone(),child.get_key().1));
-        child.save(db)?;
+        self.save_child(child, db)?;
         Ok(())
     }
 
