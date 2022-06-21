@@ -3,7 +3,7 @@ use std::{fmt};
 
 /// Error kind enum for Reindeer-related errors.
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 pub enum ErrorKind {
     /// Something went wrong at the `sled` level.
     SledError,
@@ -33,6 +33,9 @@ impl Error {
             error_kind,
             message : message,
         }
+    }
+    pub fn kind(&self) -> ErrorKind {
+        self.error_kind
     }
 }
 
