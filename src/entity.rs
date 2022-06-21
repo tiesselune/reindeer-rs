@@ -689,6 +689,23 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(key)
     }
 
+    /// Reparents a child to this entity and saves the result to the database.
+    /// 
+    /// ### Exemple 
+    /// ```rust
+    /// let m_struct_1 = MyStruct1::get(&9,&db)?;
+    /// let m_struct_2 = MyStruct2::get(&(7,2),&db)?;
+    /// m_struct1.adopt_child(m_struct2,&db)?;
+    /// ```
+    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
+    /// accordingly in the database.
+    fn adopt_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
+        E::remove(child.get_key(), db)?;
+        child.set_key(&(self.get_key().clone(),child.get_key().1));
+        child.save(db)?;
+        Ok(())
+    }
+
     /// Gets children Entities from another store
     /// 
     /// ### Exemple 
@@ -699,6 +716,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_children<E: Entity<Key = (Self::Key, u32)>>(&self, db: &Db) -> Result<Vec<E>> {
         E::get_with_prefix(self.get_key(), db)
     }
+
 }
 
 /// `AutoIncrementEntity` is a trait aimed to automatically be 
@@ -741,6 +759,7 @@ where
         Ok(next_key)
     }
 }
+
 
 /// Trait allowing values to be converted to `Vec<u8>`.
 /// This trait is not meant to be implemented, but you can if you need to.
