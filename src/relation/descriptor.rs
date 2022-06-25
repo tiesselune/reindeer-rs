@@ -6,16 +6,30 @@ use std::hash::BuildHasherDefault;
 use crate::entity::AsBytes;
 use crate::Entity;
 
-use super::DeletionBehaviour;
+use super::{DeletionBehaviour, Relation};
 
 #[doc(hidden)]
 pub type RelationMap =
-    HashMap<String, Vec<(Vec<u8>, DeletionBehaviour)>, BuildHasherDefault<FxHasher>>;
+    HashMap<String, Vec<RelationDescriptor>, BuildHasherDefault<FxHasher>>;
 
 #[doc(hidden)]
 #[derive(Serialize, Deserialize, Default)]
-pub struct RelationDescriptor {
+pub struct EntityRelations {
     pub related_entities: RelationMap,
+}
+
+#[doc(hidden)]
+#[derive(Serialize, Deserialize)]
+pub struct RelationDescriptor {
+    pub key : Vec<u8>,
+    pub deletion_behaviour : DeletionBehaviour,
+    pub name : Option<String>,
+}
+
+impl RelationDescriptor {
+    fn new(key : &[u8], deletion_behaviour : DeletionBehaviour, name : Option<&str>) -> RelationDescriptor {
+        RelationDescriptor { key : key.to_owned(), deletion_behaviour, name : name.map(|s| s.to_owned()) }
+    }
 }
 
 #[doc(hidden)]
@@ -27,10 +41,10 @@ pub struct FamilyDescriptor {
 }
 
 #[doc(hidden)]
-impl RelationDescriptor {
-    pub fn add_related<E: Entity>(&mut self, e: &E, behaviour: DeletionBehaviour) {
+impl EntityRelations {
+    pub fn add_related<E: Entity>(&mut self, e: &E, behaviour: DeletionBehaviour, name : Option<&str>) {
         let key = e.get_key().as_bytes();
-        self.add_related_by_key(E::store_name(), &key, behaviour);
+        self.add_related_by_key(E::store_name(), &key, behaviour, name);
     }
 
     pub fn add_related_by_key(
@@ -38,12 +52,13 @@ impl RelationDescriptor {
         tree_name: &str,
         key: &[u8],
         behaviour: DeletionBehaviour,
+        name : Option<&str>,
     ) {
         if let Some(v) = self.related_entities.get_mut(tree_name) {
-            v.push((key.to_vec(), behaviour))
+            v.push(RelationDescriptor::new(key, behaviour,name))
         } else {
             self.related_entities
-                .insert(String::from(tree_name), vec![(key.to_vec(), behaviour)]);
+                .insert(String::from(tree_name), vec![RelationDescriptor::new(key, behaviour,name)]);
         }
     }
 
@@ -55,7 +70,7 @@ impl RelationDescriptor {
         if let Some(v) = self.related_entities.get_mut(tree) {
             if let Some(index) = v
                 .iter()
-                .position(|(value, _)| value.to_ascii_lowercase() == e.to_ascii_lowercase())
+                .position(|rd| rd.key.to_ascii_lowercase() == e.to_ascii_lowercase())
             {
                 v.remove(index);
             }

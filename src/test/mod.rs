@@ -168,6 +168,7 @@ fn test_free_relation() -> Result<()> {
             &e2_1,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -176,6 +177,7 @@ fn test_free_relation() -> Result<()> {
             &e2_2,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -204,6 +206,7 @@ fn test_free_relation_cascade() -> Result<()> {
             &e2_1,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -212,6 +215,7 @@ fn test_free_relation_cascade() -> Result<()> {
             &e2_2,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -242,6 +246,7 @@ fn test_free_relation_error() -> Result<()> {
             &e2_1,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -250,6 +255,7 @@ fn test_free_relation_error() -> Result<()> {
             &e2_2,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -278,6 +284,7 @@ fn test_recursive_cascade() -> Result<()> {
             &e2_1,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -286,6 +293,7 @@ fn test_recursive_cascade() -> Result<()> {
             &e2_3,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -311,6 +319,7 @@ fn test_recursive_error() -> Result<()> {
             &e2_1,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());
@@ -319,6 +328,7 @@ fn test_recursive_error() -> Result<()> {
             &e2_3,
             DeletionBehaviour::Cascade,
             DeletionBehaviour::Error,
+            Some("relation1"),
             &db
         )
         .is_ok());

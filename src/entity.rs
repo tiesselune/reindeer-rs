@@ -4,7 +4,7 @@
 
 use std::{fs::File, mem::size_of};
 
-use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation, RelationDescriptor};
+use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation, EntityRelations};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
@@ -451,12 +451,12 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     #[doc(hidden)]
     fn pre_remove(key: &[u8], db: &Db) -> Result<()> {
-        let mut to_be_removed = RelationDescriptor::default();
+        let mut to_be_removed = EntityRelations::default();
         Relation::can_be_deleted(Self::store_name(), key, &Vec::new(), &mut to_be_removed, db)?;
         for (tree, keys) in &to_be_removed.related_entities {
             let tree = db.open_tree(tree)?;
             let mut batch = Batch::default();
-            keys.iter().for_each(|(k, _)| batch.remove(k.as_slice()));
+            keys.iter().for_each(|rd| batch.remove(rd.key.as_slice()));
             tree.apply_batch(batch)?;
         }
         Relation::remove_entity_entry::<Self>(key, db)?;
@@ -469,7 +469,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             Self::store_name(),
             key,
             &Vec::new(),
-            &mut RelationDescriptor::default(),
+            &mut EntityRelations::default(),
             db,
         )?;
         Ok(())
@@ -582,9 +582,10 @@ pub trait Entity: Serialize + DeserializeOwned {
         other: &E,
         self_to_other: DeletionBehaviour,
         other_to_self: DeletionBehaviour,
+        name : Option<&str>,
         db: &Db,
     ) -> Result<()> {
-        Relation::create(self, other, self_to_other, other_to_self, db)
+        Relation::create(self, other, self_to_other, other_to_self, name,db)
     }
 
     /// Breaks an existing link between two entities.

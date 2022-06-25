@@ -7,7 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
 pub use self::descriptor::FamilyDescriptor;
-pub use self::descriptor::{RelationDescriptor, RelationMap};
+pub use self::descriptor::{EntityRelations, RelationMap};
 
 pub struct Relation;
 
@@ -17,10 +17,11 @@ impl Relation {
         e2: &E2,
         e1_to_e2: DeletionBehaviour,
         e2_to_e1: DeletionBehaviour,
+        name : Option<&str>,
         db: &Db,
     ) -> Result<()> {
-        Relation::create_link(e1, e2, e1_to_e2, db)?;
-        Relation::create_link(e2, e1, e2_to_e1, db)?;
+        Relation::create_link(e1, e2, e1_to_e2,name, db)?;
+        Relation::create_link(e2, e1, e2_to_e1,name, db)?;
         Ok(())
     }
 
@@ -36,7 +37,7 @@ impl Relation {
             for referer in referers {
                 Self::remove_link_with_keys_and_tree_names(
                     &tree_name,
-                    &referer.0,
+                    &referer.key,
                     E1::store_name(),
                     key,
                     db,
@@ -70,14 +71,14 @@ impl Relation {
         Ok(())
     }
 
-    pub fn relations<E1: Entity>(e1: &E1, db: &Db) -> Result<RelationDescriptor> {
+    pub fn relations<E1: Entity>(e1: &E1, db: &Db) -> Result<EntityRelations> {
         Relation::get_descriptor(e1, db)
     }
 
     pub fn relations_with_key<E1: Entity>(
         key: &[u8],
         db: &Db,
-    ) -> Result<RelationDescriptor> {
+    ) -> Result<EntityRelations> {
         Relation::get_descriptor_with_key::<E1>(key, db)
     }
 
@@ -85,7 +86,7 @@ impl Relation {
         tree_name: &str,
         e1: &[u8],
         already_checked: &[(String, Vec<u8>)],
-        removable_entities: &mut RelationDescriptor,
+        removable_entities: &mut EntityRelations,
         db: &Db,
     ) -> Result<()> {
         if already_checked
@@ -98,12 +99,12 @@ impl Relation {
         let family_descriptor = FamilyDescriptor::get(&String::from(tree_name), db)?;
 
         for (other_tree_name, entities) in &descriptor.related_entities {
-            for (key, deletion_behaviour) in entities {
-                match deletion_behaviour {
+            for rd in entities {
+                match rd.deletion_behaviour {
                     DeletionBehaviour::Error => {
                         if already_checked
                             .iter()
-                            .any(|(tn, k)| tn == other_tree_name && k.as_bytes() == key.as_bytes())
+                            .any(|(tn, k)| tn == other_tree_name && k.as_bytes() == rd.key.as_bytes())
                         {
                             continue;
                         }
@@ -117,15 +118,16 @@ impl Relation {
                         new_already_checked.push((String::from(tree_name), e1.to_vec()));
                         Self::can_be_deleted(
                             other_tree_name,
-                            key,
+                            &rd.key,
                             &new_already_checked,
                             removable_entities,
                             db,
                         )?;
                         removable_entities.add_related_by_key(
                             other_tree_name,
-                            key,
+                            &rd.key,
                             DeletionBehaviour::Cascade,
+                            None,
                         );
                     }
                     _ => {}
@@ -170,6 +172,7 @@ impl Relation {
                         other_tree_name,
                         e1,
                         DeletionBehaviour::Cascade,
+                        None,
                     );
                 }
                 _ => {}
@@ -212,6 +215,7 @@ impl Relation {
                             other_tree_name,
                             &key,
                             DeletionBehaviour::Cascade,
+                            None,
                         );
                     }
                 }
@@ -227,7 +231,7 @@ impl Relation {
             Ok(E2::get_each_u8(
                 (related_keys
                     .iter()
-                    .map(|e| e.0.clone())
+                    .map(|e| e.key.clone())
                     .collect::<Vec<Vec<u8>>>())
                 .as_slice(),
                 db,
@@ -241,7 +245,7 @@ impl Relation {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             if !related_keys.is_empty() {
-                if let Some(e) = E2::get_from_u8_array(&related_keys[0].0, db)? {
+                if let Some(e) = E2::get_from_u8_array(&related_keys[0].key, db)? {
                     return Ok(e);
                 }
             }
@@ -260,30 +264,30 @@ impl Relation {
         tree_name: &str,
         e: &[u8],
         db: &Db,
-    ) -> Result<RelationDescriptor> {
+    ) -> Result<EntityRelations> {
         let tree = db.open_tree(Relation::tree_name(tree_name))?;
         match tree.get(e)? {
             Some(relation_descriptor) => {
-                Ok(bincode::deserialize::<RelationDescriptor>(&relation_descriptor).unwrap())
+                Ok(bincode::deserialize::<EntityRelations>(&relation_descriptor).unwrap())
             }
-            None => Ok(RelationDescriptor::default()),
+            None => Ok(EntityRelations::default()),
         }
     }
 
     fn get_descriptor_with_key<E: Entity>(
         e: &[u8],
         db: &Db,
-    ) -> Result<RelationDescriptor> {
+    ) -> Result<EntityRelations> {
         Self::get_descriptor_with_key_and_tree_name(E::store_name(), e, db)
     }
 
-    fn get_descriptor<E: Entity>(e: &E, db: &Db) -> Result<RelationDescriptor> {
+    fn get_descriptor<E: Entity>(e: &E, db: &Db) -> Result<EntityRelations> {
         Self::get_descriptor_with_key::<E>(&e.get_key().as_bytes(), db)
     }
 
     fn save_descriptor_with_key<E: Entity>(
         e: &[u8],
-        r_d: &RelationDescriptor,
+        r_d: &EntityRelations,
         db: &Db,
     ) -> Result<()> {
         let tree = db.open_tree(Relation::tree_name(E::store_name()))?;
@@ -294,7 +298,7 @@ impl Relation {
     fn save_descriptor_with_key_and_tree_name(
         tree_name: &str,
         e: &[u8],
-        r_d: &RelationDescriptor,
+        r_d: &EntityRelations,
         db: &Db,
     ) -> std::io::Result<()> {
         let tree = db.open_tree(Relation::tree_name(tree_name))?;
@@ -304,7 +308,7 @@ impl Relation {
 
     pub fn save_descriptor<E: Entity>(
         e: &E,
-        r_d: &RelationDescriptor,
+        r_d: &EntityRelations,
         db: &Db,
     ) -> Result<()> {
         Self::save_descriptor_with_key::<E>(&e.get_key().as_bytes(), r_d, db)
@@ -314,10 +318,11 @@ impl Relation {
         e1: &E1,
         e2: &E2,
         e1_to_e2: DeletionBehaviour,
+        name : Option<&str>,
         db: &Db,
     ) -> Result<()> {
         let mut e1_descriptor = Self::get_descriptor(e1, db)?;
-        e1_descriptor.add_related(e2, e1_to_e2);
+        e1_descriptor.add_related(e2, e1_to_e2,name);
         Self::save_descriptor(e1, &e1_descriptor, db)?;
         Ok(())
     }
