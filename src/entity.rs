@@ -611,6 +611,11 @@ pub trait Entity: Serialize + DeserializeOwned {
         Relation::get::<Self, E>(self, db)
     }
 
+    /// Gets all the entities related to this one in another store with a given relation name
+    fn get_related_with_name<E:Entity>(&self, name : &str, db:&Db) -> Result<Vec<E>> {
+        Relation::get_with_name::<Self,E>(self, name, db)
+    }
+
     /// Gets the first entity related to this one in another store.
     /// 
     /// ### Exemple 
@@ -620,6 +625,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     fn get_single_related<E: Entity>(&self, db: &Db) -> Result<Option<E>> {
         Relation::get_one::<Self, E>(self, db)
+    }
+
+    /// Gets the first entity related to this one in another store with a given relation name
+    fn get_single_related_with_name<E: Entity>(&self, name : &str, db: &Db) -> Result<Option<E>> {
+        Relation::get_one_with_name::<Self, E>(self,name, db)
     }
 
     /// Saves `sibling` in its own store after having changed its key to match `self`
