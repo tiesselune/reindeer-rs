@@ -618,7 +618,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_single_related::<MyStruct2>(&db)?;
     /// ```
-    fn get_single_related<E: Entity>(&self, db: &Db) -> Result<E> {
+    fn get_single_related<E: Entity>(&self, db: &Db) -> Result<Option<E>> {
         Relation::get_one::<Self, E>(self, db)
     }
 

@@ -241,19 +241,53 @@ impl Relation {
         }
     }
 
-    pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> Result<E2> {
+    pub fn get_with_name<E1 : Entity, E2 : Entity>(e1 : &E1, name : &str, db : &Db) -> Result<Vec<E2>> {
+        let referers = Relation::relations(e1, db)?;
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
+            Ok(E2::get_each_u8(
+                (related_keys
+                    .iter()
+                    .filter(|rd| match &rd.name {Some(n) => name == n, None => false})
+                    .map(|e| e.key.clone())
+                    .collect::<Vec<Vec<u8>>>())
+                .as_slice(),
+                db,
+            ))
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub fn get_one<E1: Entity, E2: Entity>(e1: &E1, db: &Db) -> Result<Option<E2>> {
         let referers = Relation::relations(e1, db)?;
         if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
             if !related_keys.is_empty() {
-                if let Some(e) = E2::get_from_u8_array(&related_keys[0].key, db)? {
-                    return Ok(e);
-                }
+                E2::get_from_u8_array(&related_keys[0].key, db)
+            }
+            else {
+                Ok(None)
             }
         }
-        Err(Error::new(
-            ErrorKind::NotFound,
-            String::from("No related entities were found."),
-        ))
+        else{
+            Ok(None)
+        }
+    }
+
+    pub fn get_one_with_name<E1: Entity, E2: Entity>(e1 : &E1, name : &str, db : &Db) -> Result<Option<E2>>{
+        let referers = Relation::relations(e1, db)?;
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
+            let item = related_keys.iter().find(|rd| if let Some(n) = &rd.name { name == n } else {false});
+            match item {
+                Some(rd) => {
+                    E2::get_from_u8_array(&related_keys[0].key, db)
+                },
+                None => Ok(None),
+                
+            }
+        }
+        else {
+            Ok(None)
+        }
     }
 
     fn tree_name(entity_tree: &str) -> String {
