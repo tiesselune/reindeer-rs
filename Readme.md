@@ -267,7 +267,7 @@ let mut e2 = Entity2 {
     /* ... */
 }
 
-e1.create_relation(e2,DeletionBehaviour::Cascade, DeletionBehaviour::BreakLink,&db)?;
+e1.create_relation(e2,DeletionBehaviour::Cascade, DeletionBehaviour::BreakLink,None,&db)?;
 ```
 
 In the above example, deletion behaviour in both ways are provided : deleting `e1` will automatically delete `e2`, but deleting `e2` will leave `e1` untouched and break the link between them.
@@ -283,6 +283,23 @@ To get only the first related entity from the other tree, use
 
 ```rust
 let related_entity = e1.get_single_related::<Entity2>(db)?;
+```
+
+#### Getting related entites from a given tree with a specific relation name
+
+A name must have been supplied when creating the relation :
+
+```rust
+e1.create_relation(e2,DeletionBehaviour::Cascade, DeletionBehaviour::BreakLink,Some("main"),&db)?;
+```
+
+```rust
+let related_entities = e1.get_related_with_name::<Entity2>("secondary",db)?;
+```
+To get only the first related entity from the other tree, use 
+
+```rust
+let related_entity = e1.get_single_related_with_name::<Entity2>("main",db)?;
 ```
 
 #### Breaking a free relation link
