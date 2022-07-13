@@ -6,7 +6,7 @@ use std::hash::BuildHasherDefault;
 use crate::entity::AsBytes;
 use crate::Entity;
 
-use super::{DeletionBehaviour, Relation};
+use super::{DeletionBehaviour};
 
 #[doc(hidden)]
 pub type RelationMap =
@@ -19,7 +19,7 @@ pub struct EntityRelations {
 }
 
 #[doc(hidden)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize,PartialEq,Eq)]
 pub struct RelationDescriptor {
     pub key : Vec<u8>,
     pub deletion_behaviour : DeletionBehaviour,
