@@ -577,6 +577,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// As this creates a two way binding, `DeletionBehaviour` in both ways must be provided :
     ///  - `self_to_other` defines what happens to `other` if `self` gets removed from the database
     ///  - `other_to_self` defines what happens to `self` if `other` gets removed from the database
+    ///  - `name` is an optionnal name for the relation.
     fn create_relation<E: Entity>(
         &self,
         other: &E,
