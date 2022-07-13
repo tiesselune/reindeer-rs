@@ -612,6 +612,12 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets all the entities related to this one in another store with a given relation name
+    ///
+    /// ### Exemple 
+    /// ```rust
+    /// let m_struct_1 = MyStruct1::get(&9,&db)?;
+    /// let related_struct2s = m_struct_1.get_related_with_name::<MyStruct2>("collection",&db)?;
+    /// 
     fn get_related_with_name<E:Entity>(&self, name : &str, db:&Db) -> Result<Vec<E>> {
         Relation::get_with_name::<Self,E>(self, name, db)
     }
@@ -628,6 +634,12 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets the first entity related to this one in another store with a given relation name
+    /// 
+    /// ### Exemple 
+    /// ```rust
+    /// let m_struct_1 = MyStruct1::get(&9,&db)?;
+    /// let m_struct_2 = m_struct_1.get_single_related_with_name::<MyStruct2>("main_book",&db)?;
+    /// ```
     fn get_single_related_with_name<E: Entity>(&self, name : &str, db: &Db) -> Result<Option<E>> {
         Relation::get_one_with_name::<Self, E>(self,name, db)
     }
@@ -665,6 +677,29 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Saves `child` in its own store after having changed its key to make it effectively a child of `self`
+    /// `child` must be an Entity with a Key being the tuple `(Self::Key,_)` (`Self::Key` being the key type of the parent entity)
+    /// 
+    /// ⚠ Note that for child relations to be fully functionnal, [`get_child_trees`](entity/trait.Entity.html#method.get_child_trees) must be
+    /// overriden
+    /// 
+    /// ### Exemple 
+    /// ```rust
+    /// let m_struct_1 = MyStruct1::get(&9,&db)?;
+    /// let m_struct_2 = MyStruct2 { key : (0,44), prop9 : 44};
+    /// m_struct1.save_child(m_struct2,&db)?;
+    /// ```
+    fn save_child<E: Entity<Key = (Self::Key, T)>,T : Clone>(
+        &self,
+        child: &mut E,
+        db: &Db,
+    ) -> Result<E::Key> {
+        let key = (self.get_key().clone(), child.get_key().1.clone());
+        child.set_key(&key);
+        child.save(db)?;
+        Ok(key)
+    }
+
+    /// Saves `child` in its own store after having changed its key to make it effectively a child of `self`
     /// `child` must be an Entity with a Key being the tuple `(Self::Key,u32)` (`Self::Key` being the key type of the parent entity)
     /// 
     /// ⚠ Note that for child relations to be fully functionnal, [`get_child_trees`](entity/trait.Entity.html#method.get_child_trees) must be
@@ -674,9 +709,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2 { key : (0,0), prop9 : 44};
-    /// m_struct1.save_child(m_struct2,&db)?;
+    /// m_struct1.save_next_child(m_struct2,&db)?;
     /// ```
-    fn save_child<E: Entity<Key = (Self::Key, u32)>>(
+    fn save_next_child<E: Entity<Key = (Self::Key, u32)>>(
         &self,
         child: &mut E,
         db: &Db,
@@ -706,11 +741,27 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2::get(&(7,2),&db)?;
-    /// m_struct1.adopt_child(m_struct2,&db)?;
+    /// m_struct1.adopt_as_next_child(m_struct2,&db)?;
     /// ```
     /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
     /// accordingly in the database.
-    fn adopt_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
+    fn adopt_as_next_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
+        E::remove(child.get_key(), db)?;
+        self.save_next_child(child, db)?;
+        Ok(())
+    }
+
+    /// Reparents a child to this entity and saves the result to the database.
+    /// 
+    /// ### Exemple 
+    /// ```rust
+    /// let m_struct_1 = MyStruct1::get(&9,&db)?;
+    /// let m_struct_2 = MyStruct2::get(&(7,2),&db)?;
+    /// m_struct1.adopt_as_next_child(m_struct2,&db)?;
+    /// ```
+    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
+    /// accordingly in the database.
+    fn adopt_child<E : Entity<Key = (Self::Key,T)>,T : Clone>(&self, child : &mut E, db : &Db) -> Result<()> {
         E::remove(child.get_key(), db)?;
         self.save_child(child, db)?;
         Ok(())
