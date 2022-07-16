@@ -1,6 +1,6 @@
 [package]
 name = "reindeer"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "A small entity-based embedded database with a minimal no-SQL relationnal model, written in pure Rust."
 license = "MIT"
