@@ -290,6 +290,42 @@ impl Relation {
         }
     }
 
+    pub fn are_related<E1 : Entity, E2 : Entity>(e1 : &E1, e2 : &E2, db : &Db) -> Result<bool> {
+        let referers = Relation::relations(e1, db)?;
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
+            Ok(related_keys.iter().any(|rd| rd.key == e2.get_key().as_bytes()))
+        }
+        else {
+            Ok(false)
+        }
+    }
+
+    pub fn are_related_with_name<E1 : Entity, E2 : Entity>(e1 : &E1, e2 : &E2, name : &str, db : &Db) -> Result<bool> {
+        let referers = Relation::relations(e1, db)?;
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
+            Ok(related_keys.iter().any(|rd| rd.key == e2.get_key().as_bytes() && (match &rd.name {
+                Some(rname) => rname == name,
+                None => false,
+            })))
+        }
+        else {
+            Ok(false)
+        }
+    }
+
+    pub fn are_related_with_any_name<E1 : Entity, E2 : Entity>(e1 : &E1, e2 : &E2, names : &[&str], db : &Db) -> Result<bool> {
+        let referers = Relation::relations(e1, db)?;
+        if let Some(related_keys) = referers.related_entities.get(E2::store_name()) {
+            Ok(related_keys.iter().any(|rd| rd.key == e2.get_key().as_bytes() && (match &rd.name {
+                Some(rname) => names.iter().any(|name| name == rname),
+                None => false,
+            })))
+        }
+        else {
+            Ok(false)
+        }
+    }
+
     fn tree_name(entity_tree: &str) -> String {
         format!("__$rel_{}", entity_tree)
     }

@@ -645,6 +645,22 @@ pub trait Entity: Serialize + DeserializeOwned {
         Relation::get_one_with_name::<Self, E>(self,name, db)
     }
 
+
+    /// Checks if a free relation exists between this entity and another.
+    fn is_related_to<E : Entity>(&self, other : &E, db : &Db) -> Result<bool> {
+        Relation::are_related(self, other, db)
+    }
+
+    /// Checks if a named relation exists between this entity and another, with a specific relation name
+    fn is_related_to_with_name<E : Entity>(&self, other : &E, name : &str, db : &Db) -> Result<bool> {
+        Relation::are_related_with_name(self, other, name, db)
+    }
+
+        /// Checks if a named relation exists between this entity and another, with one of the provided names
+    fn is_related_to_with_any_name<E : Entity>(&self, other : &E, names : &[&str], db : &Db) -> Result<bool> {
+        Relation::are_related_with_any_name(self, other, names, db)
+    }
+
     /// Saves `sibling` in its own store after having changed its key to match `self`
     /// This is a convenience method.
     /// 
