@@ -7,7 +7,6 @@ use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
 pub use self::descriptor::FamilyDescriptor;
-use self::descriptor::RelationDescriptor;
 pub use self::descriptor::{EntityRelations, RelationMap};
 
 pub struct Relation;

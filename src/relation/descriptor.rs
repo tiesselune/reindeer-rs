@@ -90,7 +90,10 @@ impl EntityRelations {
         self.related_entities.iter_mut().for_each(|(tree_name,entities)| {
             if tree_name == tree {
                 entities.iter_mut().for_each(|desc| {
-                    desc.key = new_id.to_owned();
+                    if desc.key == old_id {
+                        desc.key = new_id.to_owned();
+                    }
+                    
                 });
             }
         })
