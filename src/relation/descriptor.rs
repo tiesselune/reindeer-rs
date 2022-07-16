@@ -85,6 +85,16 @@ impl EntityRelations {
             v.retain(|rd| rd.key.to_ascii_lowercase() != e.to_ascii_lowercase() && if let Some(r_name) = &rd.name {name == r_name} else { false });
         }
     }
+
+    pub fn replace_id(&mut self, tree: &str, old_id : &[u8], new_id : &[u8]) {
+        self.related_entities.iter_mut().for_each(|(tree_name,entities)| {
+            if tree_name == tree {
+                entities.iter_mut().for_each(|desc| {
+                    desc.key = new_id.to_owned();
+                });
+            }
+        })
+    }
 }
 
 #[doc(hidden)]

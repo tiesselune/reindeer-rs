@@ -7,6 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
 pub use self::descriptor::FamilyDescriptor;
+use self::descriptor::RelationDescriptor;
 pub use self::descriptor::{EntityRelations, RelationMap};
 
 pub struct Relation;
@@ -28,6 +29,19 @@ impl Relation {
     pub fn remove<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, db: &Db) -> Result<()> {
         Relation::remove_link(e1, e2, db)?;
         Relation::remove_link(e2, e1, db)?;
+        Ok(())
+    }
+
+    pub fn change_entity_id(tree_name : &str, old_id : &[u8], new_id : &[u8], db : &Db) -> Result<()> {
+        let mut descriptor = Relation::get_descriptor_with_key_and_tree_name(tree_name, old_id, db)?;
+        for (other_tree,entities) in &mut descriptor.related_entities {
+            for rd in entities{
+                let mut other_desc = Relation::get_descriptor_with_key_and_tree_name(other_tree, &rd.key, db)?;
+                other_desc.replace_id(tree_name, old_id, new_id);
+                Relation::save_descriptor_with_key_and_tree_name(other_tree, &rd.key, &other_desc, db)?;
+            }
+        }
+        Relation::save_descriptor_with_key_and_tree_name(tree_name, new_id, &descriptor, db)?;
         Ok(())
     }
 
@@ -121,6 +135,7 @@ impl Relation {
                 }
             }
         }
+        Relation::remove_descriptor(tree_name,e1, db)?;
         if family_descriptor.is_none() {
             return Err(Error::new(
                 ErrorKind::UnregisteredEntity,
@@ -369,6 +384,12 @@ impl Relation {
         db: &Db,
     ) -> Result<()> {
         Self::save_descriptor_with_key::<E>(&e.get_key().as_bytes(), r_d, db)
+    }
+
+    pub fn remove_descriptor(tree_name: &str,e : &[u8], db : &Db) -> Result<()> {
+        let tree = db.open_tree(Relation::tree_name(tree_name))?;
+        tree.remove(e)?;
+        Ok(())
     }
 
     fn create_link<E1: Entity, E2: Entity>(

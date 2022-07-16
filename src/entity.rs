@@ -770,8 +770,10 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
     /// accordingly in the database.
     fn adopt_as_next_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
-        E::remove(child.get_key(), db)?;
+        let old_id = child.get_key().clone();
         self.save_next_child(child, db)?;
+        Relation::change_entity_id(E::store_name(), &old_id.as_bytes(), &child.get_key().as_bytes(), db)?;
+        E::remove(&old_id, db)?;
         Ok(())
     }
 
@@ -785,9 +787,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
     /// accordingly in the database.
-    fn adopt_child<E : Entity<Key = (Self::Key,T)>,T : Clone>(&self, child : &mut E, db : &Db) -> Result<()> {
-        E::remove(child.get_key(), db)?;
+    fn adopt_child<E : Entity<Key = (Self::Key,T)>,T : Clone + AsBytes>(&self, child : &mut E, db : &Db) -> Result<()> {
+        let old_id = child.get_key().clone();
         self.save_child(child, db)?;
+        Relation::change_entity_id(E::store_name(), &old_id.as_bytes(), &child.get_key().as_bytes(), db)?;
+        E::remove(&old_id, db)?;
         Ok(())
     }
 
