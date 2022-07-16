@@ -31,6 +31,12 @@ impl Relation {
         Ok(())
     }
 
+    pub fn remove_with_name<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, name : &str, db: &Db) -> Result<()> {
+        Relation::remove_link_with_name(e1, e2, name,db)?;
+        Relation::remove_link_with_name(e2, e1, name,db)?;
+        Ok(())
+    }
+
     pub fn remove_entity_entry<E1: Entity>(key: &[u8], db: &Db) -> Result<()> {
         let descriptor = Self::get_descriptor_with_key::<E1>(key, db)?;
         for (tree_name, referers) in descriptor.related_entities {
@@ -59,27 +65,8 @@ impl Relation {
         Ok(())
     }
 
-    pub fn remove_by_keys_and_tree_names(
-        tree1: &str,
-        e1: &[u8],
-        tree2: &str,
-        e2: &[u8],
-        db: &Db,
-    ) -> Result<()> {
-        Relation::remove_link_with_keys_and_tree_names(tree1, e1, tree2, e2, db)?;
-        Relation::remove_link_with_keys_and_tree_names(tree2, e2, tree1, e1, db)?;
-        Ok(())
-    }
-
     pub fn relations<E1: Entity>(e1: &E1, db: &Db) -> Result<EntityRelations> {
         Relation::get_descriptor(e1, db)
-    }
-
-    pub fn relations_with_key<E1: Entity>(
-        key: &[u8],
-        db: &Db,
-    ) -> Result<EntityRelations> {
-        Relation::get_descriptor_with_key::<E1>(key, db)
     }
 
     pub fn can_be_deleted(
@@ -279,7 +266,7 @@ impl Relation {
             let item = related_keys.iter().find(|rd| if let Some(n) = &rd.name { name == n } else {false});
             match item {
                 Some(rd) => {
-                    E2::get_from_u8_array(&related_keys[0].key, db)
+                    E2::get_from_u8_array(&rd.key, db)
                 },
                 None => Ok(None),
                 
@@ -408,6 +395,18 @@ impl Relation {
         Ok(())
     }
 
+    fn remove_link_with_keys_and_relation_name<E1: Entity, E2: Entity>(
+        e1: &[u8],
+        e2: &[u8],
+        name : &str,
+        db: &Db,
+    ) -> Result<()> {
+        let mut e1_descriptor = Self::get_descriptor_with_key::<E1>(e1, db)?;
+        e1_descriptor.remove_related_by_key_with_name::<E2>(e2,name);
+        Self::save_descriptor_with_key::<E1>(e1, &e1_descriptor, db)?;
+        Ok(())
+    }
+
     fn remove_link_with_keys_and_tree_names(
         tree1: &str,
         e1: &[u8],
@@ -425,6 +424,15 @@ impl Relation {
         Relation::remove_link_with_keys::<E1, E2>(
             &e1.get_key().as_bytes(),
             &e2.get_key().as_bytes(),
+            db,
+        )
+    }
+
+    fn remove_link_with_name<E1: Entity, E2: Entity>(e1: &E1, e2: &E2, name : &str, db: &Db) -> Result<()> {
+        Relation::remove_link_with_keys_and_relation_name::<E1, E2>(
+            &e1.get_key().as_bytes(),
+            &e2.get_key().as_bytes(),
+            name,
             db,
         )
     }

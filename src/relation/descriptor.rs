@@ -55,7 +55,11 @@ impl EntityRelations {
         name : Option<&str>,
     ) {
         if let Some(v) = self.related_entities.get_mut(tree_name) {
-            v.push(RelationDescriptor::new(key, behaviour,name))
+            let relation_descriptor = RelationDescriptor::new(key, behaviour,name);
+            if !v.contains(&relation_descriptor) {
+                v.push(relation_descriptor);
+            }
+            
         } else {
             self.related_entities
                 .insert(String::from(tree_name), vec![RelationDescriptor::new(key, behaviour,name)]);
@@ -66,14 +70,19 @@ impl EntityRelations {
         self.remove_related_by_key_and_tree_name(E::store_name(), e)
     }
 
+    pub fn remove_related_by_key_with_name<E: Entity>(&mut self, e: &[u8], name : &str) {
+        self.remove_related_by_key_and_tree_name_with_name(E::store_name(), e, name)
+    }
+
     pub fn remove_related_by_key_and_tree_name(&mut self, tree: &str, e: &[u8]) {
         if let Some(v) = self.related_entities.get_mut(tree) {
-            if let Some(index) = v
-                .iter()
-                .position(|rd| rd.key.to_ascii_lowercase() == e.to_ascii_lowercase())
-            {
-                v.remove(index);
-            }
+            v.retain(|rd| rd.key.to_ascii_lowercase() != e.to_ascii_lowercase());
+        }
+    }
+
+    pub fn remove_related_by_key_and_tree_name_with_name(&mut self, tree: &str, e: &[u8], name : &str) {
+        if let Some(v) = self.related_entities.get_mut(tree) {
+            v.retain(|rd| rd.key.to_ascii_lowercase() != e.to_ascii_lowercase() && if let Some(r_name) = &rd.name {name == r_name} else { false });
         }
     }
 }

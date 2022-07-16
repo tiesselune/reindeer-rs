@@ -596,6 +596,13 @@ pub trait Entity: Serialize + DeserializeOwned {
         Relation::remove(self, other, db)
     }
 
+    /// Breaks an existing link between two entities with a specific name
+    /// 
+    /// This will remove the relation in both ways.
+    fn remove_relation_with_name<E: Entity>(&self, other: &E,name : &str, db: &Db) -> Result<()> {
+        Relation::remove_with_name(self, other, name,db)
+    }
+
     #[doc(hidden)]
     fn remove_relation_with_key<E: Entity>(&self, other: &[u8], db: &Db) -> Result<()> {
         Relation::remove_by_keys::<Self, E>(&self.get_key().as_bytes(), other, db)
