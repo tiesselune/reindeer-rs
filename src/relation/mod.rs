@@ -54,20 +54,18 @@ impl Relation {
         let family_descriptor = family_descriptor.unwrap();
         for (other_tree, _) in family_descriptor.child_trees {
             let tree = db.open_tree(&other_tree)?;
-            for res in tree.scan_prefix(old_id) {
-                if let Ok((key, value)) = res {
-                    let new_key = [new_id, &key[old_id.len()..]].concat();
-                    tree.insert(&new_key, value)?;
-                    Relation::change_entity_id(&other_tree, &key, &new_key, db)?;
-                    tree.remove(&key)?;
-                }
+            for (key, value) in tree.scan_prefix(old_id).flatten() {
+                let new_key = [new_id, &key[old_id.len()..]].concat();
+                tree.insert(&new_key, value)?;
+                Relation::change_entity_id(&other_tree, &key, &new_key, db)?;
+                tree.remove(&key)?;
             }
         }
         for (other_tree, _) in family_descriptor.sibling_trees {
             let tree = db.open_tree(&other_tree)?;
             if let Some(value) = tree.get(old_id)? {
                 tree.insert(&new_id, value)?;
-                Relation::change_entity_id(&other_tree, &old_id, &new_id, db)?;
+                Relation::change_entity_id(&other_tree, old_id, new_id, db)?;
                 tree.remove(&old_id)?;
             }
         }

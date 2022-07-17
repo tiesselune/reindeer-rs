@@ -132,9 +132,9 @@ fn test_delete_sibling_cascade() -> Result<()> {
     e1.save_next(&db)?;
     let mut e3 = Entity3 { id: 0 };
     e1.save_sibling(&mut e3, &db)?;
-    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
-    assert!(Entity1::get(&e1.get_key(), &db)?.is_none());
-    assert!(Entity3::get(&e3.get_key(), &db)?.is_none());
+    assert!(Entity1::remove(e1.get_key(), &db).is_ok());
+    assert!(Entity1::get(e1.get_key(), &db)?.is_none());
+    assert!(Entity3::get(e3.get_key(), &db)?.is_none());
     tear_down(&name)?;
     Ok(())
 }
@@ -151,9 +151,9 @@ fn test_delete_sibling_error() -> Result<()> {
     e1.save_next(&db)?;
     let mut e3 = Entity3 { id: 0 };
     e1.save_sibling(&mut e3, &db)?;
-    assert!(Entity3::remove(&e1.get_key(), &db).is_err());
-    assert!(Entity1::get(&e1.get_key(), &db)?.is_some());
-    assert!(Entity3::get(&e3.get_key(), &db)?.is_some());
+    assert!(Entity3::remove(e1.get_key(), &db).is_err());
+    assert!(Entity1::get(e1.get_key(), &db)?.is_some());
+    assert!(Entity3::get(e3.get_key(), &db)?.is_some());
     tear_down(&name)?;
     Ok(())
 }
@@ -224,7 +224,7 @@ fn test_free_relation_cascade() -> Result<()> {
         .is_ok());
     let related = e1.get_related::<Entity2>(&db)?;
     assert_eq!(related.len(), 2);
-    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
+    assert!(Entity1::remove(e1.get_key(), &db).is_ok());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 0);
     assert!(Entity2::get(&String::from("id1"), &db)?.is_none());
     assert!(Entity2::get(&String::from("id2"), &db)?.is_none());
@@ -264,7 +264,7 @@ fn test_free_relation_error() -> Result<()> {
         .is_ok());
     let related = e1.get_related::<Entity2>(&db)?;
     assert_eq!(related.len(), 2);
-    assert!(Entity2::remove(&e2_1.get_key(), &db).is_err());
+    assert!(Entity2::remove(e2_1.get_key(), &db).is_err());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 2);
     tear_down(&name)?;
     Ok(())
@@ -302,7 +302,7 @@ fn test_recursive_cascade() -> Result<()> {
         .is_ok());
     let related = e1.get_related::<Entity2>(&db)?;
     assert_eq!(related.len(), 2);
-    assert!(Entity1::remove(&e1.get_key(), &db).is_ok());
+    assert!(Entity1::remove(e1.get_key(), &db).is_ok());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 0);
     assert_eq!(ChildEntity1::get_count(&db)?, 0);
     tear_down(&name)?;
@@ -337,7 +337,7 @@ fn test_recursive_error() -> Result<()> {
         .is_ok());
     let related = e1.get_related::<Entity2>(&db)?;
     assert_eq!(related.len(), 2);
-    assert!(Entity1::remove(&e1.get_key(), &db).is_err());
+    assert!(Entity1::remove(e1.get_key(), &db).is_err());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 2);
     assert_eq!(ChildEntity1::get_count(&db)?, 3);
 

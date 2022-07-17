@@ -30,7 +30,7 @@ impl Error {
     pub fn new(error_kind: ErrorKind, message: String) -> Error {
         Error {
             error_kind,
-            message: message,
+            message,
         }
     }
     pub fn kind(&self) -> ErrorKind {

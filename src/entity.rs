@@ -206,7 +206,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// }
     /// ```
     fn get(key: &Self::Key, db: &Db) -> Result<Option<Self>> {
-        Ok(Self::get_from_u8_array(&key.as_bytes(), db)?)
+        Self::get_from_u8_array(&key.as_bytes(), db)
     }
 
     /// Retrieves all entities of a given type.
@@ -528,7 +528,7 @@ pub trait Entity: Serialize + DeserializeOwned {
         let mut res = Self::get_with_filter(f, db)?;
         let mut to_remove_from_result = Vec::new();
         for (index, entity) in res.iter().enumerate() {
-            if Self::remove(&entity.get_key(), db).is_err() {
+            if Self::remove(entity.get_key(), db).is_err() {
                 to_remove_from_result.push(index)
             };
         }
@@ -696,7 +696,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// let m_struct_2 = m_struct_1.get_sibling::<MyStruct2>(&db)?;
     /// ```
     fn get_sibling<E: Entity<Key = Self::Key>>(&self, db: &Db) -> Result<Option<E>> {
-        E::get(&self.get_key(), db)
+        E::get(self.get_key(), db)
     }
 
     /// Saves `child` in its own store after having changed its key to make it effectively a child of `self`
