@@ -1,6 +1,6 @@
 mod test_entities;
 
-use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result, Error, test::test_entities::GrandChildEntity};
+use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result, test::test_entities::GrandChildEntity};
 use test_entities::{
     set_up, set_up_content, tear_down, ChildEntity1, ChildEntity2, Entity1, Entity2, Entity3,
 };
