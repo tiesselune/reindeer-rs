@@ -1,9 +1,8 @@
-use std::{fmt};
-
+use std::fmt;
 
 /// Error kind enum for Reindeer-related errors.
 #[non_exhaustive]
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ErrorKind {
     /// Something went wrong at the `sled` level.
     SledError,
@@ -22,16 +21,16 @@ pub enum ErrorKind {
 /// Error type for `reindeer`
 #[derive(Debug)]
 pub struct Error {
-    error_kind : ErrorKind,
-    message : String,
+    error_kind: ErrorKind,
+    message: String,
 }
 
 impl Error {
     /// Creates a new error from an error kind and a message
-    pub fn new(error_kind : ErrorKind,message : String) -> Error {
+    pub fn new(error_kind: ErrorKind, message: String) -> Error {
         Error {
             error_kind,
-            message : message,
+            message: message,
         }
     }
     pub fn kind(&self) -> ErrorKind {
@@ -41,7 +40,11 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Reindeer Error of type {:?} : {}",self.error_kind,&self.message)
+        write!(
+            f,
+            "Reindeer Error of type {:?} : {}",
+            self.error_kind, &self.message
+        )
     }
 }
 
@@ -52,36 +55,24 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 impl From<std::io::Error> for Error {
     fn from(source: std::io::Error) -> Self {
-        Error::new(
-            ErrorKind::IOError,
-            source.to_string(),
-        )
+        Error::new(ErrorKind::IOError, source.to_string())
     }
 }
 
 impl From<sled::Error> for Error {
     fn from(source: sled::Error) -> Self {
-        Error::new(
-            ErrorKind::SledError,
-            source.to_string(),
-        )
+        Error::new(ErrorKind::SledError, source.to_string())
     }
 }
 
 impl From<bincode::Error> for Error {
     fn from(source: bincode::Error) -> Self {
-        Error::new(
-            ErrorKind::SerializationError,
-            source.to_string(),
-        )
+        Error::new(ErrorKind::SerializationError, source.to_string())
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(source: serde_json::Error) -> Self {
-        Error::new(
-            ErrorKind::SerializationError,
-            source.to_string(),
-        )
+        Error::new(ErrorKind::SerializationError, source.to_string())
     }
 }

@@ -1,5 +1,5 @@
-use crate::AutoIncrementEntity;
 use crate::error::Result;
+use crate::AutoIncrementEntity;
 use serde_derive::{Deserialize, Serialize};
 use sled::Db;
 
@@ -33,10 +33,9 @@ pub struct ChildEntity2 {
     id: (u32, u32),
 }
 
-
 #[derive(Serialize, Deserialize)]
 pub struct GrandChildEntity {
-    id: ((String, u32),u32),
+    id: ((String, u32), u32),
 }
 
 impl Entity for Entity1 {
@@ -116,7 +115,7 @@ impl Entity for ChildEntity1 {
     }
 
     fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
-        vec![("grand_child_entity",DeletionBehaviour::Cascade)]
+        vec![("grand_child_entity", DeletionBehaviour::Cascade)]
     }
 }
 
@@ -137,7 +136,7 @@ impl Entity for ChildEntity2 {
 }
 
 impl Entity for GrandChildEntity {
-    type Key = ((String, u32),u32);
+    type Key = ((String, u32), u32);
 
     fn store_name() -> &'static str {
         "grand_child_entity"
@@ -202,13 +201,12 @@ pub fn set_up_content(db: &Db) -> Result<()> {
     e3.save_next_child(&mut e5, db)?;
     e3.save_next_child(&mut e5, db)?;
     let mut grand_child = GrandChildEntity {
-        id : ((String::from("id0"), 1),0)
+        id: ((String::from("id0"), 1), 0),
     };
     e4.save_next_child(&mut grand_child, db)?;
     e4.save_next_child(&mut grand_child, db)?;
     e4.save_next_child(&mut grand_child, db)?;
     Ok(())
-
 }
 
 pub fn tear_down(name: &str) -> Result<()> {

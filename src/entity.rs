@@ -4,21 +4,21 @@
 
 use std::{fs::File, mem::size_of};
 
-use crate::relation::{DeletionBehaviour, FamilyDescriptor, Relation, EntityRelations};
+use crate::error::Result;
+use crate::relation::{DeletionBehaviour, EntityRelations, FamilyDescriptor, Relation};
 use serde::{de::DeserializeOwned, Serialize};
 use sled::{Batch, Db, IVec, Tree};
 use std::convert::TryInto;
-use crate::error::Result;
 
 /// The `Entity` trait provides document store capabilities for any struct that implements it.
-/// 
+///
 /// ### Example
 /// ```rust
 /// use reindeer::{Entity, Serialize,Deserialize,open};
-/// 
+///
 /// #[derive(Serialize,Deserialize)]
 /// struct MyStruct  { pub key : u32, pub prop1 : String }
-/// 
+///
 /// impl Entity for MyStruct{
 ///    type Key = u32;
 ///    fn store_name() -> &'static str {
@@ -32,7 +32,7 @@ use crate::error::Result;
 ///    }
 /// }
 /// ```
-/// 
+///
 /// ```rust
 /// let db = open("./my-db")?;
 /// let my_struct = MyStruct { key : 2 , prop1 : String::from("Hello, World!")};
@@ -41,9 +41,9 @@ use crate::error::Result;
 /// ```rust
 /// let my_struct_0 = MyStruct::get(&2,&db)?;
 /// ```
-/// 
+///
 /// More information on how to use the trait is provided below.
-/// 
+///
 pub trait Entity: Serialize + DeserializeOwned {
     /// The type of the Key for this document store.
     ///
@@ -83,9 +83,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_key(&self) -> &Self::Key;
 
     /// A function that changes this entity instance's key to another key.
-    /// This is used on behalf of the user when using 
-    /// [`save_child`](entity/trait.Entity.html#method.save_child), 
-    /// [`save_sibling`](entity/trait.Entity.html#method.save_sibling) and 
+    /// This is used on behalf of the user when using
+    /// [`save_child`](entity/trait.Entity.html#method.save_child),
+    /// [`save_sibling`](entity/trait.Entity.html#method.save_sibling) and
     /// [`save_next`](entity/trait.AutoIncrementEntity.html#tymethod.save_next)
     ///
     /// ### Example
@@ -98,12 +98,12 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// ```
     fn set_key(&mut self, key: &Self::Key);
 
-    /// A function that returns the list of sibling trees as well as the 
-    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use 
+    /// A function that returns the list of sibling trees as well as the
+    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use
     /// for the sibling counterparts of this instance if it is removed
-    /// 
+    ///
     /// Override it to create one or several sibling relationships.
-    /// 
+    ///
     /// ⚠ Note that you should also override it in the sibling entity implementations
     /// with this one's `store_name` along with the `DeletionBehaviour`. It should
     /// **not** bet set to `DeletionBehaviour::Error` to avoid creating a deadlock.
@@ -123,15 +123,15 @@ pub trait Entity: Serialize + DeserializeOwned {
         Vec::new()
     }
 
-    /// A function that returns the list of child trees as well as the 
-    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use 
+    /// A function that returns the list of child trees as well as the
+    /// [`DeletionBehaviour`](relation/enum.DeletionBehaviour.html) to use
     /// for the child instances of this instance if it is removed
-    /// 
+    ///
     /// Override it to create one or several child relationships.
-    /// 
+    ///
     /// ⚠ Note that you should not use `DeletionBehaviour::BreakLink` here
     /// for integrity's sake, but it remains possible.
-    /// 
+    ///
     /// Contrary to sibling relationships, nothing needs to be done in the child
     /// Entity implementation
     ///
@@ -151,15 +151,15 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Call this function once the database is opened on each Entity that you want to use.
     /// This is necessary to provide safe and type-agnostic deletion mechanisms.
-    /// 
+    ///
     /// ⚠ If this function is not called, deleting an entity of that type will result in an error.
-    /// 
+    ///
     /// ### Example
-    /// 
+    ///
     /// ```rust
     /// impl Entity for MyStruct { /* ... */}
     /// ```
-    /// 
+    ///
     /// ```rust
     /// MyStruct::register(&db)?;
     /// ```
@@ -195,11 +195,11 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Retrieves an entity instance given its key.
-    /// 
+    ///
     /// If the key does not exist, it returns None.
-    /// 
+    ///
     /// ### Example
-    /// 
+    ///
     /// ```rust
     /// if let Some(my_struct_4) = MyStruct::get(&4,&db)? {
     ///     /* ... */
@@ -210,13 +210,13 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Retrieves all entities of a given type.
-    /// 
+    ///
     /// If a lot of entities are registered to the database, this
     /// might be very heavy on resources.
-    /// 
-    /// 
+    ///
+    ///
     /// ### Example
-    /// 
+    ///
     /// ```rust
     /// let entities = MyStruct::get_all(&db)?;
     /// ```
@@ -228,7 +228,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Returns the number of saved instances for this entity type.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let count = MyStruct::get_count()?;
@@ -255,7 +255,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// Gets entities in a range of keys with a min and max values
     /// This can be especially useful when keys are integral types,
     /// but any key will work.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_in_range(10,30,&db)?;
@@ -268,15 +268,15 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets `count` entities starting at the instance at index `start` in the given store
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_from_start(10,20,None,&db)?;
     /// ```
     /// ## Child entities
-    /// 
+    ///
     /// A parent key can be supplied for child entities, to consider only children of a given parent.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_from_start(10,20,Some(parent.get_key().to_owned()),&db)?;
@@ -308,15 +308,15 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Gets `count` entities starting at the instance at index `start` from the end of a given store
     /// Same as `get_from_start`, but starting at the end of the store.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_from_end(10,20,None,&db)?;
     /// ```
     /// ## Child entities
-    /// 
+    ///
     /// A parent key can be supplied for child entities, to consider only children of a given parent.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_from_end(10,20,Some(parent.get_key().to_owned()),&db)?;
@@ -347,11 +347,11 @@ pub trait Entity: Serialize + DeserializeOwned {
         Ok(result)
     }
 
-    /// Gets all entities of a given store matching a condition materialized 
+    /// Gets all entities of a given store matching a condition materialized
     /// as a function returning a boolean
-    /// 
+    ///
     /// ⚠ This will effectively iterate over every entity in the store.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_with_filter(|m_struct| m_struct.prop > 20,&db)?;
@@ -365,9 +365,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets several entites matching a collection of keys
-    /// 
+    ///
     /// ⚠ This will call `get` as many times as the number of keys provided.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// let entities = MyStruct::get_each(vec![4,8,9],&db)?;
@@ -394,9 +394,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Saves an entity to the database, using its key provided by the`get_key` method.
-    /// 
+    ///
     /// ### Example
-    /// 
+    ///
     /// ```rust
     /// let my_struct = MyStruct { key : 0, prop1 : String::from("Hello"), prop2 : 554};
     /// my_struct.save(&db)?;
@@ -410,26 +410,25 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Updates an entity entry using the provided function
-    /// 
+    ///
     /// ### Example
-    /// This will get the `MyStruct` instance with key 3  and increment its `prop1` member 
+    /// This will get the `MyStruct` instance with key 3  and increment its `prop1` member
     /// ```rust
     /// MyStruct::update(&3,|my_struct| my_struct.prop1++,&db)?;
     /// ```
     fn update<F: Fn(&mut Self)>(key: &Self::Key, f: F, db: &Db) -> Result<()> {
-        Self::get_tree(db)?
-            .fetch_and_update(&key.as_bytes(), |e| {
-                e.map(|u8_arr| {
-                    let mut value: Self = Self::from_ivec(IVec::from(u8_arr));
-                    f(&mut value);
-                    value.to_ivec()
-                })
-            })?;
+        Self::get_tree(db)?.fetch_and_update(&key.as_bytes(), |e| {
+            e.map(|u8_arr| {
+                let mut value: Self = Self::from_ivec(IVec::from(u8_arr));
+                f(&mut value);
+                value.to_ivec()
+            })
+        })?;
         Ok(())
     }
 
     /// Updates all entities that match a condition provided as a function
-    /// 
+    ///
     /// ### Example
     /// This will get all the `MyStruct` instances with prop1 greater than 100
     /// and change it to be 0 instead;
@@ -460,7 +459,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             tree.apply_batch(batch)?;
         }
         Relation::remove_entity_entry::<Self>(key, db)?;
-        Relation::remove_descriptor(Self::store_name(),key, db)?;
+        Relation::remove_descriptor(Self::store_name(), key, db)?;
         Ok(())
     }
 
@@ -477,9 +476,9 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Removes an entity given its key.
-    /// ⚠ If removal is impossible due to integrity checks 
+    /// ⚠ If removal is impossible due to integrity checks
     /// (`DeletionBehaviour::Error` found in the relation hierarchy), this will result in an error.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// MyStruct::remove(&3, &db);
@@ -517,10 +516,10 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Removes every entry of a store, given a condition in the form of a function returning a boolean
     /// and returns the array of removed elements.
-    /// ⚠ If removal is impossible due to integrity checks 
+    /// ⚠ If removal is impossible due to integrity checks
     /// (`DeletionBehaviour::Error` found in the relation hierarchy), they won't be deleted and won't be
     /// included in results.
-    /// 
+    ///
     /// ### Example
     /// ```rust
     /// MyStruct::remove(&3, &db);
@@ -528,7 +527,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn filter_remove<F: Fn(&Self) -> bool>(f: F, db: &Db) -> Result<Vec<Self>> {
         let mut res = Self::get_with_filter(f, db)?;
         let mut to_remove_from_result = Vec::new();
-        for (index,entity) in res.iter().enumerate() {
+        for (index, entity) in res.iter().enumerate() {
             if Self::remove(&entity.get_key(), db).is_err() {
                 to_remove_from_result.push(index)
             };
@@ -547,8 +546,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     /// }
     /// ```
     fn exists(key: &Self::Key, db: &Db) -> Result<bool> {
-        Ok(Self::get_tree(db)?
-            .contains_key(&key.as_bytes())?)
+        Ok(Self::get_tree(db)?.contains_key(&key.as_bytes())?)
     }
 
     /// Exports the entire store for this entity as a JSON file.
@@ -561,9 +559,9 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Imports the entire store for this entity as a JSON file.
     /// Any existing entities with matching keys will be overridden.
-    /// 
+    ///
     /// This can be used for restoring purposes.
-    /// 
+    ///
     /// ⚠ If the structure of the JSON file does not match the Structs used in the app, this will fail with an error.
     fn import_json(f: File, db: &Db) -> Result<()> {
         let all: Vec<Self> = serde_json::from_reader(f)?;
@@ -574,7 +572,7 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Creates a free relation between this entity and another one.
-    /// 
+    ///
     /// As this creates a two way binding, `DeletionBehaviour` in both ways must be provided :
     ///  - `self_to_other` defines what happens to `other` if `self` gets removed from the database
     ///  - `other_to_self` defines what happens to `self` if `other` gets removed from the database
@@ -584,24 +582,24 @@ pub trait Entity: Serialize + DeserializeOwned {
         other: &E,
         self_to_other: DeletionBehaviour,
         other_to_self: DeletionBehaviour,
-        name : Option<&str>,
+        name: Option<&str>,
         db: &Db,
     ) -> Result<()> {
-        Relation::create(self, other, self_to_other, other_to_self, name,db)
+        Relation::create(self, other, self_to_other, other_to_self, name, db)
     }
 
     /// Breaks an existing link between two entities.
-    /// 
+    ///
     /// This will remove the relation in both ways.
     fn remove_relation<E: Entity>(&self, other: &E, db: &Db) -> Result<()> {
         Relation::remove(self, other, db)
     }
 
     /// Breaks an existing link between two entities with a specific name
-    /// 
+    ///
     /// This will remove the relation in both ways.
-    fn remove_relation_with_name<E: Entity>(&self, other: &E,name : &str, db: &Db) -> Result<()> {
-        Relation::remove_with_name(self, other, name,db)
+    fn remove_relation_with_name<E: Entity>(&self, other: &E, name: &str, db: &Db) -> Result<()> {
+        Relation::remove_with_name(self, other, name, db)
     }
 
     #[doc(hidden)]
@@ -610,8 +608,8 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets all entities related to this one in another store.
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let related_struct2s = m_struct_1.get_related::<MyStruct2>(&db)?;
@@ -622,18 +620,18 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Gets all the entities related to this one in another store with a given relation name
     ///
-    /// ### Exemple 
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let related_struct2s = m_struct_1.get_related_with_name::<MyStruct2>("collection",&db)?;
-    /// 
-    fn get_related_with_name<E:Entity>(&self, name : &str, db:&Db) -> Result<Vec<E>> {
-        Relation::get_with_name::<Self,E>(self, name, db)
+    ///
+    fn get_related_with_name<E: Entity>(&self, name: &str, db: &Db) -> Result<Vec<E>> {
+        Relation::get_with_name::<Self, E>(self, name, db)
     }
 
     /// Gets the first entity related to this one in another store.
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_single_related::<MyStruct2>(&db)?;
@@ -643,56 +641,56 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Gets the first entity related to this one in another store with a given relation name
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_single_related_with_name::<MyStruct2>("main_book",&db)?;
     /// ```
-    fn get_single_related_with_name<E: Entity>(&self, name : &str, db: &Db) -> Result<Option<E>> {
-        Relation::get_one_with_name::<Self, E>(self,name, db)
+    fn get_single_related_with_name<E: Entity>(&self, name: &str, db: &Db) -> Result<Option<E>> {
+        Relation::get_one_with_name::<Self, E>(self, name, db)
     }
 
-
     /// Checks if a free relation exists between this entity and another.
-    fn is_related_to<E : Entity>(&self, other : &E, db : &Db) -> Result<bool> {
+    fn is_related_to<E: Entity>(&self, other: &E, db: &Db) -> Result<bool> {
         Relation::are_related(self, other, db)
     }
 
     /// Checks if a named relation exists between this entity and another, with a specific relation name
-    fn is_related_to_with_name<E : Entity>(&self, other : &E, name : &str, db : &Db) -> Result<bool> {
+    fn is_related_to_with_name<E: Entity>(&self, other: &E, name: &str, db: &Db) -> Result<bool> {
         Relation::are_related_with_name(self, other, name, db)
     }
 
-        /// Checks if a named relation exists between this entity and another, with one of the provided names
-    fn is_related_to_with_any_name<E : Entity>(&self, other : &E, names : &[&str], db : &Db) -> Result<bool> {
+    /// Checks if a named relation exists between this entity and another, with one of the provided names
+    fn is_related_to_with_any_name<E: Entity>(
+        &self,
+        other: &E,
+        names: &[&str],
+        db: &Db,
+    ) -> Result<bool> {
         Relation::are_related_with_any_name(self, other, names, db)
     }
 
     /// Saves `sibling` in its own store after having changed its key to match `self`
     /// This is a convenience method.
-    /// 
+    ///
     /// ⚠ Note that for sibling relations to be fully functionnal, [`get_sibling_trees`](entity/trait.Entity.html#method.get_sibling_trees) must be
     /// overriden
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2 { key : 0, prop9 : 32};
     /// m_struct_1.save_sibling(m_struct_2,&db)?;
     /// ```
-    fn save_sibling<E: Entity<Key = Self::Key>>(
-        &self,
-        sibling: &mut E,
-        db: &Db,
-    ) -> Result<()> {
+    fn save_sibling<E: Entity<Key = Self::Key>>(&self, sibling: &mut E, db: &Db) -> Result<()> {
         sibling.set_key(self.get_key());
         sibling.save(db)
     }
 
     /// Gets an Entity in another store with the same key as `self`
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = m_struct_1.get_sibling::<MyStruct2>(&db)?;
@@ -703,17 +701,17 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Saves `child` in its own store after having changed its key to make it effectively a child of `self`
     /// `child` must be an Entity with a Key being the tuple `(Self::Key,_)` (`Self::Key` being the key type of the parent entity)
-    /// 
+    ///
     /// ⚠ Note that for child relations to be fully functionnal, [`get_child_trees`](entity/trait.Entity.html#method.get_child_trees) must be
     /// overriden
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2 { key : (0,44), prop9 : 44};
     /// m_struct1.save_child(m_struct2,&db)?;
     /// ```
-    fn save_child<E: Entity<Key = (Self::Key, T)>,T : Clone>(
+    fn save_child<E: Entity<Key = (Self::Key, T)>, T: Clone>(
         &self,
         child: &mut E,
         db: &Db,
@@ -726,11 +724,11 @@ pub trait Entity: Serialize + DeserializeOwned {
 
     /// Saves `child` in its own store after having changed its key to make it effectively a child of `self`
     /// `child` must be an Entity with a Key being the tuple `(Self::Key,u32)` (`Self::Key` being the key type of the parent entity)
-    /// 
+    ///
     /// ⚠ Note that for child relations to be fully functionnal, [`get_child_trees`](entity/trait.Entity.html#method.get_child_trees) must be
     /// overriden
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2 { key : (0,0), prop9 : 44};
@@ -761,44 +759,62 @@ pub trait Entity: Serialize + DeserializeOwned {
     }
 
     /// Reparents a child to this entity and saves the result to the database.
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2::get(&(7,2),&db)?;
     /// m_struct1.adopt_as_next_child(m_struct2,&db)?;
     /// ```
-    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
+    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed
     /// accordingly in the database.
-    fn adopt_as_next_child<E : Entity<Key = (Self::Key,u32)>>(&self, child : &mut E, db : &Db) -> Result<()> {
+    fn adopt_as_next_child<E: Entity<Key = (Self::Key, u32)>>(
+        &self,
+        child: &mut E,
+        db: &Db,
+    ) -> Result<()> {
         let old_id = child.get_key().clone();
         self.save_next_child(child, db)?;
-        Relation::change_entity_id(E::store_name(), &old_id.as_bytes(), &child.get_key().as_bytes(), db)?;
+        Relation::change_entity_id(
+            E::store_name(),
+            &old_id.as_bytes(),
+            &child.get_key().as_bytes(),
+            db,
+        )?;
         E::remove(&old_id, db)?;
         Ok(())
     }
 
     /// Reparents a child to this entity and saves the result to the database.
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let m_struct_2 = MyStruct2::get(&(7,2),&db)?;
     /// m_struct1.adopt_as_next_child(m_struct2,&db)?;
     /// ```
-    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed 
+    /// After this code, m_struct_2 now has key (9,2) instead of (7,2) and has changed
     /// accordingly in the database.
-    fn adopt_child<E : Entity<Key = (Self::Key,T)>,T : Clone + AsBytes>(&self, child : &mut E, db : &Db) -> Result<()> {
+    fn adopt_child<E: Entity<Key = (Self::Key, T)>, T: Clone + AsBytes>(
+        &self,
+        child: &mut E,
+        db: &Db,
+    ) -> Result<()> {
         let old_id = child.get_key().clone();
         self.save_child(child, db)?;
-        Relation::change_entity_id(E::store_name(), &old_id.as_bytes(), &child.get_key().as_bytes(), db)?;
+        Relation::change_entity_id(
+            E::store_name(),
+            &old_id.as_bytes(),
+            &child.get_key().as_bytes(),
+            db,
+        )?;
         E::remove(&old_id, db)?;
         Ok(())
     }
 
     /// Gets children Entities from another store
-    /// 
-    /// ### Exemple 
+    ///
+    /// ### Exemple
     /// ```rust
     /// let m_struct_1 = MyStruct1::get(&9,&db)?;
     /// let children = m_struct_1.get_children::<MyStruct2>(&db)?;
@@ -806,16 +822,14 @@ pub trait Entity: Serialize + DeserializeOwned {
     fn get_children<E: Entity<Key = (Self::Key, u32)>>(&self, db: &Db) -> Result<Vec<E>> {
         E::get_with_prefix(self.get_key(), db)
     }
-
 }
 
-/// `AutoIncrementEntity` is a trait aimed to automatically be 
+/// `AutoIncrementEntity` is a trait aimed to automatically be
 /// implemented on Entities that have `u32` as their `Key` type.
-/// 
-/// It provides the `save_next()` method that updates the key of the entity 
+///
+/// It provides the `save_next()` method that updates the key of the entity
 /// with a new, incremented one before saving it to the database.
 pub trait AutoIncrementEntity: Entity<Key = u32> {
-
     /// Returns a new key that is currently not used in the store
     fn get_next_key(db: &Db) -> Result<u32>;
 
@@ -850,11 +864,9 @@ where
     }
 }
 
-
 /// Trait allowing values to be converted to `Vec<u8>`.
 /// This trait is not meant to be implemented, but you can if you need to.
 pub trait AsBytes {
-
     /// Returns a new binary representation of `self` as a `Vec<u8>`
     fn as_bytes(&self) -> Vec<u8>;
 }
