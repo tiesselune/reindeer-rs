@@ -460,6 +460,7 @@ pub trait Entity: Serialize + DeserializeOwned {
             tree.apply_batch(batch)?;
         }
         Relation::remove_entity_entry::<Self>(key, db)?;
+        Relation::remove_descriptor(Self::store_name(),key, db)?;
         Ok(())
     }
 

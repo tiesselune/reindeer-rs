@@ -157,7 +157,6 @@ impl Relation {
                 }
             }
         }
-        Relation::remove_descriptor(tree_name,e1, db)?;
         if family_descriptor.is_none() {
             return Err(Error::new(
                 ErrorKind::UnregisteredEntity,

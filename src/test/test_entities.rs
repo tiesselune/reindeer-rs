@@ -33,6 +33,12 @@ pub struct ChildEntity2 {
     id: (u32, u32),
 }
 
+
+#[derive(Serialize, Deserialize)]
+pub struct GrandChildEntity {
+    id: ((String, u32),u32),
+}
+
 impl Entity for Entity1 {
     type Key = u32;
 
@@ -108,6 +114,10 @@ impl Entity for ChildEntity1 {
     fn set_key(&mut self, key: &Self::Key) {
         self.id = key.clone();
     }
+
+    fn get_child_trees() -> Vec<(&'static str, DeletionBehaviour)> {
+        vec![("grand_child_entity",DeletionBehaviour::Cascade)]
+    }
 }
 
 impl Entity for ChildEntity2 {
@@ -126,6 +136,22 @@ impl Entity for ChildEntity2 {
     }
 }
 
+impl Entity for GrandChildEntity {
+    type Key = ((String, u32),u32);
+
+    fn store_name() -> &'static str {
+        "grand_child_entity"
+    }
+
+    fn get_key(&self) -> &Self::Key {
+        &self.id
+    }
+
+    fn set_key(&mut self, key: &Self::Key) {
+        self.id = key.clone();
+    }
+}
+
 pub fn set_up(name: &str) -> Result<Db> {
     let mut dir = std::env::temp_dir();
     dir.push(name);
@@ -136,6 +162,7 @@ pub fn set_up(name: &str) -> Result<Db> {
     Entity3::register(&db)?;
     ChildEntity1::register(&db)?;
     ChildEntity2::register(&db)?;
+    GrandChildEntity::register(&db)?;
     Ok(db)
 }
 
@@ -167,14 +194,21 @@ pub fn set_up_content(db: &Db) -> Result<()> {
     let mut e4 = ChildEntity1 {
         id: (String::from("id0"), 0),
     };
-    e2.save_child(&mut e4, db)?;
-    e2.save_child(&mut e4, db)?;
-    e2.save_child(&mut e4, db)?;
+    e2.save_next_child(&mut e4, db)?;
+    e2.save_next_child(&mut e4, db)?;
+    e2.save_next_child(&mut e4, db)?;
     let mut e5 = ChildEntity2 { id: (0, 0) };
-    e3.save_child(&mut e5, db)?;
-    e3.save_child(&mut e5, db)?;
-    e3.save_child(&mut e5, db)?;
+    e3.save_next_child(&mut e5, db)?;
+    e3.save_next_child(&mut e5, db)?;
+    e3.save_next_child(&mut e5, db)?;
+    let mut grand_child = GrandChildEntity {
+        id : ((String::from("id0"), 1),0)
+    };
+    e4.save_next_child(&mut grand_child, db)?;
+    e4.save_next_child(&mut grand_child, db)?;
+    e4.save_next_child(&mut grand_child, db)?;
     Ok(())
+
 }
 
 pub fn tear_down(name: &str) -> Result<()> {

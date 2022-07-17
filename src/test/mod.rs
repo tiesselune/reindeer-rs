@@ -1,6 +1,6 @@
 mod test_entities;
 
-use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result};
+use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result, Error};
 use test_entities::{
     set_up, set_up_content, tear_down, ChildEntity1, ChildEntity2, Entity1, Entity2, Entity3,
 };
@@ -337,6 +337,63 @@ fn test_recursive_error() -> Result<()> {
     assert!(Entity1::remove(&e1.get_key(), &db).is_err());
     assert_eq!(e1.get_related::<Entity2>(&db)?.len(), 2);
     assert_eq!(ChildEntity1::get_count(&db)?, 3);
+  
+  tear_down(&name)?;
+    Ok(())
+}
+
+#[test]
+fn test_adopt_child() -> Result<()> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+    let e2 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    
     tear_down(&name)?;
+    todo!();
+    Ok(())
+}
+
+#[test]
+fn test_adopt_child_with_siblings() -> Result<()> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+  
+    tear_down(&name)?;
+    todo!();
+    Ok(())
+}
+
+#[test]
+fn test_adopt_child_with_children() -> Result<()> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+  
+    tear_down(&name)?;
+    todo!();
+    Ok(())
+}
+
+#[test]
+fn test_adopt_child_with_relations() -> Result<()> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+  
+    tear_down(&name)?;
+    todo!();
+    Ok(())
+}
+
+#[test]
+fn test_named_relations() -> Result<()> {
+    let name = get_random_name();
+    let db = set_up(&name)?;
+    set_up_content(&db)?;
+  
+    tear_down(&name)?;
+    todo!();
     Ok(())
 }
