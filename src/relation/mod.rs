@@ -1,5 +1,4 @@
 mod descriptor;
-
 use crate::error::Result;
 use crate::{Error, ErrorKind};
 use crate::entity::{AsBytes, Entity};
@@ -41,6 +40,30 @@ impl Relation {
             }
         }
         Relation::save_descriptor_with_key_and_tree_name(tree_name, new_id, &descriptor, db)?;
+        let family_descriptor = FamilyDescriptor::get(&String::from(tree_name), db)?;
+        if family_descriptor.is_none() {
+            return Ok(());
+        }
+        let family_descriptor = family_descriptor.unwrap();
+        for (other_tree, _) in family_descriptor.child_trees {
+            let tree = db.open_tree(&other_tree)?;
+            for res in tree.scan_prefix(old_id) {
+                if let Ok((key,value)) = res {
+                    let new_key = [new_id,&key[old_id.len()..]].concat();
+                    tree.insert(&new_key, value)?;
+                    Relation::change_entity_id(&other_tree, &key, &new_key, db)?;
+                    tree.remove(&key)?;
+                }
+            }
+        }
+        for (other_tree, _) in family_descriptor.sibling_trees {
+            let tree = db.open_tree(&other_tree)?;
+                if let Some(value) = tree.get(old_id)? {
+                    tree.insert(&new_id, value)?;
+                    Relation::change_entity_id(&other_tree, &old_id, &new_id, db)?;
+                    tree.remove(&old_id)?;
+                }
+        }
         Ok(())
     }
 
