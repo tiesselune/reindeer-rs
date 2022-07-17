@@ -1,6 +1,6 @@
 mod test_entities;
 
-use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result, Error};
+use crate::{relation::FamilyDescriptor, AutoIncrementEntity, DeletionBehaviour, Entity, error::Result, Error, test::test_entities::GrandChildEntity};
 use test_entities::{
     set_up, set_up_content, tear_down, ChildEntity1, ChildEntity2, Entity1, Entity2, Entity3,
 };
@@ -347,21 +347,19 @@ fn test_adopt_child() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
-    let e2 = Entity2::get(&String::from("id1"),&db)?.unwrap();
-    
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
+    let mut children = e2_3.get_children::<ChildEntity1>(&db)?;
+    assert_eq!(children.len(),3);
+    assert_eq!(children[1].get_key().1, 1);
+    assert_eq!(e2_1.get_children::<ChildEntity1>(&db)?.len(),0);
+    e2_1.adopt_as_next_child(&mut children[1], &db)?;
+    let children = e2_3.get_children::<ChildEntity1>(&db)?;
+    assert_eq!(children.len(),2);
+    let other_children = e2_1.get_children::<ChildEntity1>(&db)?;
+    assert_eq!(other_children.len(),1);
+    assert_eq!(other_children[0].get_key().1, 3);
     tear_down(&name)?;
-    todo!();
-    Ok(())
-}
-
-#[test]
-fn test_adopt_child_with_siblings() -> Result<()> {
-    let name = get_random_name();
-    let db = set_up(&name)?;
-    set_up_content(&db)?;
-  
-    tear_down(&name)?;
-    todo!();
     Ok(())
 }
 
@@ -370,9 +368,16 @@ fn test_adopt_child_with_children() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
-  
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
+    let mut children = e2_3.get_children::<ChildEntity1>(&db)?;
+    e2_1.adopt_as_next_child(&mut children[2], &db)?;
+    let other_children = e2_1.get_children::<ChildEntity1>(&db)?;
+    assert_eq!(other_children.len(),1);
+    let child = &other_children[0];
+    assert_eq!(child.get_key().1, 3);
+    assert_eq!(child.get_children::<GrandChildEntity>(&db)?.len(),3);
     tear_down(&name)?;
-    todo!();
     Ok(())
 }
 
@@ -381,9 +386,19 @@ fn test_adopt_child_with_relations() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
-  
+    let e2_1 = Entity2::get(&String::from("id1"),&db)?.unwrap();
+    let e2_3 = Entity2::get(&String::from("id3"),&db)?.unwrap();
+    let e3 = Entity3::get(&0,&db)?.unwrap();
+    let mut children = e2_3.get_children::<ChildEntity1>(&db)?;
+    children[2].create_relation(&e3, DeletionBehaviour::BreakLink, DeletionBehaviour::BreakLink, None, &db)?;
+    e2_1.adopt_as_next_child(&mut children[2], &db)?;
+    let other_children = e2_1.get_children::<ChildEntity1>(&db)?;
+    assert_eq!(other_children.len(),1);
+    let child = &other_children[0];
+    assert_eq!(child.get_key().1, 3);
+    assert_eq!(child.get_related::<Entity3>(&db)?.len(),1);
+    assert_eq!(e3.get_related::<ChildEntity1>(&db)?.len(),1);
     tear_down(&name)?;
-    todo!();
     Ok(())
 }
 
@@ -392,8 +407,19 @@ fn test_named_relations() -> Result<()> {
     let name = get_random_name();
     let db = set_up(&name)?;
     set_up_content(&db)?;
-  
+    let e2_1 = Entity2::get(&String::from("id1"), &db)?.unwrap();
+    let e3_1 = Entity3::get(&0, &db)?.unwrap();
+    let e3_3 = Entity3::get(&2, &db)?.unwrap();
+    e2_1.create_relation(&e3_1, DeletionBehaviour::BreakLink, DeletionBehaviour::BreakLink, Some("rel1"), &db)?;
+    e2_1.create_relation(&e3_3, DeletionBehaviour::BreakLink, DeletionBehaviour::BreakLink, Some("rel2"), &db)?;
+    assert!(e2_1.is_related_to(&e3_1, &db)?);
+    assert!(e2_1.is_related_to(&e3_3, &db)?);
+    assert!(e2_1.is_related_to_with_name(&e3_1, "rel1", &db)?);
+    assert!(!e2_1.is_related_to_with_name(&e3_3, "rel1", &db)?);
+    assert!(e2_1.is_related_to_with_any_name(&e3_3, &["rel1","rel2"], &db)?);
+    assert_eq!(e2_1.get_related::<Entity3>(&db)?.len(),2);
+    assert_eq!(e2_1.get_related_with_name::<Entity3>("rel2",&db)?.len(),1);
+    assert_eq!(e2_1.get_single_related_with_name::<Entity3>("rel2",&db)?.unwrap().id,2);
     tear_down(&name)?;
-    todo!();
     Ok(())
 }
