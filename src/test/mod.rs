@@ -7,7 +7,7 @@ use test_entities::{
 use uuid::Uuid;
 
 fn get_random_name() -> String {
-    format!("sled-entity-test-{}", Uuid::new_v4())
+    format!("reindeer-test-{}", Uuid::new_v4())
 }
 #[test]
 fn create_and_register() -> Result<()> {
